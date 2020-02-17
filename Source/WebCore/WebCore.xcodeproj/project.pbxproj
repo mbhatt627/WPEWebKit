@@ -33213,6 +33213,7 @@
 				510D4A37103165EE0049EA54 /* SocketStreamHandle.h in Headers */,
 				510D4A38103165EE0049EA54 /* SocketStreamHandleClient.h in Headers */,
 				51ABAE1E103C1913008C5260 /* SocketStreamHandleImpl.h in Headers */,
+				41100C8023F74583001BC33B /* WebSocketChannelInspector.h in Headers */,
 				84A81F3E0FC7DFF000955300 /* SourceAlpha.h in Headers */,
 				CD3A496217A9D01B00274E42 /* SourceBuffer.h in Headers */,
 				CD3A496517A9D01B00274E42 /* SourceBufferList.h in Headers */,

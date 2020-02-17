@@ -29,6 +29,7 @@
 #include "MessageSender.h"
 #include <WebCore/NetworkSendQueue.h>
 #include <WebCore/ThreadableWebSocketChannel.h>
+#include <WebCore/WebSocketChannelInspector.h>
 #include <wtf/Identified.h>
 #include <wtf/WeakPtr.h>
 
@@ -73,6 +74,8 @@ private:
     void refThreadableWebSocketChannel() final { ref(); }
     void derefThreadableWebSocketChannel() final { deref(); }
 
+    void notifySendFrame(WebCore::WebSocketFrame::OpCode, const char* data, size_t length);
+
     // Message receivers
     void didConnect(String&& subprotocol, String&& extensions);
     void didReceiveText(String&&);
@@ -98,6 +101,7 @@ private:
     bool m_isSuspended { false };
     Deque<Function<void()>> m_pendingTasks;
     WebCore::NetworkSendQueue m_messageQueue;
+    WebCore::WebSocketChannelInspector m_inspector;
 };
 
 } // namespace WebKit
