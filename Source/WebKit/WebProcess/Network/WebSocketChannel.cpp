@@ -114,11 +114,8 @@ WebSocketChannel::ConnectStatus WebSocketChannel::connect(const URL& url, const 
         m_client->didUpgradeURL();
 
     m_inspector.didCreateWebSocket(m_document.get(), url);
-    // FIXME: Get the real request from networking process
-    m_inspector.willSendWebSocketHandshakeRequest(m_document.get(), *request);
 
     MessageSender::send(Messages::NetworkConnectionToWebProcess::CreateSocketChannel { *request, protocol, identifier() });
-
     return ConnectStatus::OK;
 }
 
@@ -369,6 +366,28 @@ void WebSocketChannel::resume()
 void WebSocketChannel::enqueueTask(Function<void()>&& task)
 {
     m_pendingTasks.append(WTFMove(task));
+}
+
+void WebSocketChannel::didSendHandshakeRequest(ResourceRequest&& request)
+{
+    if (m_isSuspended) {
+        enqueueTask([this, request = WTFMove(request)]() mutable {
+            didSendHandshakeRequest(WTFMove(request));
+        });
+        return;
+    }
+    m_inspector.willSendWebSocketHandshakeRequest(m_document.get(), request);
+}
+
+void WebSocketChannel::didReceiveHandshakeResponse(ResourceResponse&& response)
+{
+    if (m_isSuspended) {
+        enqueueTask([this, response = WTFMove(response)]() mutable {
+            didReceiveHandshakeResponse(WTFMove(response));
+        });
+        return;
+    }
+    m_inspector.didReceiveWebSocketHandshakeResponse(m_document.get(), response);
 }
 
 } // namespace WebKit
