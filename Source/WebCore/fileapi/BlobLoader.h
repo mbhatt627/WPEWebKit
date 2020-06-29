@@ -38,7 +38,7 @@ namespace WebCore {
 class BlobLoader final : public FileReaderLoaderClient {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    BlobLoader(Document*, Blob&, CompletionHandler<void()>&&);
+    BlobLoader(Document*, Blob&, Function<void()>&&);
     ~BlobLoader();
 
     bool isLoading() const { return !!m_loader; }
@@ -56,10 +56,10 @@ private:
     std::unique_ptr<FileReaderLoader> m_loader;
     RefPtr<JSC::ArrayBuffer> m_buffer;
     int m_errorCode { 0 };
-    CompletionHandler<void()> m_completionHandler;
+    Function<void()> m_completionHandler;
 };
 
-inline BlobLoader::BlobLoader(WebCore::Document* document, Blob& blob, CompletionHandler<void()>&& completionHandler)
+inline BlobLoader::BlobLoader(WebCore::Document* document, Blob& blob, Function<void()>&& completionHandler)
     : m_loader(makeUnique<FileReaderLoader>(FileReaderLoader::ReadAsArrayBuffer, this))
     , m_completionHandler(WTFMove(completionHandler))
 {
@@ -70,6 +70,7 @@ inline BlobLoader::~BlobLoader()
 {
     if (m_loader)
         m_loader->cancel();
+    // FIXME: Call m_completionHandler to migrate it from a Function to a CompletionHandler.
 }
 
 inline void BlobLoader::didFinishLoading()
