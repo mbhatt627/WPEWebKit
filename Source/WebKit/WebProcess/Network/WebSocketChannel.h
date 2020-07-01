@@ -30,6 +30,7 @@
 #include <WebCore/NetworkSendQueue.h>
 #include <WebCore/ThreadableWebSocketChannel.h>
 #include <WebCore/WebSocketChannelInspector.h>
+#include <WebCore/WebSocketFrame.h>
 #include <wtf/Identified.h>
 #include <wtf/WeakPtr.h>
 
