@@ -102,7 +102,6 @@
 
 #if USE(SOUP)
 #include "NetworkSessionSoup.h"
-#include <WebCore/DNSResolveQueueSoup.h>
 #include <WebCore/SoupNetworkSession.h>
 #endif
 
@@ -165,12 +164,6 @@ NetworkProcess::NetworkProcess(AuxiliaryProcessInitializationParameters&& parame
 #endif
 #if PLATFORM(COCOA) && ENABLE(LEGACY_CUSTOM_PROTOCOL_MANAGER)
     LegacyCustomProtocolManager::networkProcessCreated(*this);
-#endif
-
-#if USE(SOUP)
-    DNSResolveQueueSoup::setGlobalDefaultSoupSessionAccessor([this]() -> SoupSession* {
-        return static_cast<NetworkSessionSoup&>(*networkSession(PAL::SessionID::defaultSessionID())).soupSession();
-    });
 #endif
 
     NetworkStateNotifier::singleton().addListener([weakThis = makeWeakPtr(*this)](bool isOnLine) {
