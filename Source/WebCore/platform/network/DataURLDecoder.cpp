@@ -29,7 +29,6 @@
 #include "DecodeEscapeSequences.h"
 #include "HTTPParsers.h"
 #include "ParsedContentType.h"
-#include "SharedBuffer.h"
 #include "TextEncoding.h"
 #include <wtf/MainThread.h>
 #include <wtf/Optional.h>
@@ -50,8 +49,8 @@ static WorkQueue& decodeQueue()
 static Result parseMediaType(const String& mediaType)
 {
     if (Optional<ParsedContentType> parsedContentType = ParsedContentType::create(mediaType))
-        return { parsedContentType->mimeType(), parsedContentType->charset(), parsedContentType->serialize(), nullptr };
-    return { "text/plain"_s, "US-ASCII"_s, "text/plain;charset=US-ASCII"_s, nullptr };
+        return { parsedContentType->mimeType(), parsedContentType->charset(), parsedContentType->serialize(), { } };
+    return { "text/plain"_s, "US-ASCII"_s, "text/plain;charset=US-ASCII"_s, { } };
 }
 
 struct DecodeTask {
@@ -92,7 +91,7 @@ public:
     StringView encodedData;
     bool isBase64 { false };
     const ScheduleContext scheduleContext;
-    const DecodeCompletionHandler completionHandler;
+    DecodeCompletionHandler completionHandler;
 
     Result result;
 };
@@ -152,7 +151,7 @@ static std::unique_ptr<DecodeTask> createDecodeTask(const URL& url, const Schedu
     );
 }
 
-static void decodeBase64(DecodeTask& task)
+static bool decodeBase64(DecodeTask& task)
 {
     Vector<char> buffer;
     // First try base64url.
@@ -160,10 +159,12 @@ static void decodeBase64(DecodeTask& task)
         // Didn't work, try unescaping and decoding as base64.
         auto unescapedString = decodeURLEscapeSequences(task.encodedData.toStringWithoutCopying());
         if (!base64Decode(unescapedString, buffer, Base64IgnoreSpacesAndNewLines))
-            return;
+            return false;
     }
     buffer.shrinkToFit();
-    task.result.data = SharedBuffer::create(WTFMove(buffer));
+    task.result.data = WTFMove(buffer);
+
+    return true;
 }
 
 static void decodeEscaped(DecodeTask& task)
@@ -173,7 +174,21 @@ static void decodeEscaped(DecodeTask& task)
     auto buffer = decodeURLEscapeSequencesAsData(task.encodedData, encoding);
 
     buffer.shrinkToFit();
-    task.result.data = SharedBuffer::create(WTFMove(buffer));
+    task.result.data = WTFMove(buffer);
+}
+
+static Optional<Result> decodeSynchronously(DecodeTask& task)
+{
+    if (!task.process())
+        return WTF::nullopt;
+
+    if (task.isBase64) {
+        if (!decodeBase64(task))
+            return WTF::nullopt;
+    } else
+        decodeEscaped(task);
+
+    return WTFMove(task.result);
 }
 
 void decode(const URL& url, const ScheduleContext& scheduleContext, DecodeCompletionHandler&& completionHandler)
@@ -181,26 +196,25 @@ void decode(const URL& url, const ScheduleContext& scheduleContext, DecodeComple
     ASSERT(url.protocolIsData());
 
     decodeQueue().dispatch([decodeTask = createDecodeTask(url, scheduleContext, WTFMove(completionHandler))]() mutable {
-        if (decodeTask->process()) {
-            if (decodeTask->isBase64)
-                decodeBase64(*decodeTask);
-            else
-                decodeEscaped(*decodeTask);
-        }
+        auto result = decodeSynchronously(*decodeTask);
 
 #if HAVE(RUNLOOP_TIMER)
         DecodingResultDispatcher::dispatch(WTFMove(decodeTask));
 #else
-        callOnMainThread([decodeTask = WTFMove(decodeTask)] {
-            if (!decodeTask->result.data) {
-                decodeTask->completionHandler({ });
-                return;
-            }
-            decodeTask->completionHandler(WTFMove(decodeTask->result));
+        callOnMainThread([result = WTFMove(result), completionHandler = WTFMove(decodeTask->completionHandler)]() mutable {
+            completionHandler(WTFMove(result));
         });
 #endif
     });
 }
 
+Optional<Result> decode(const URL& url)
+{
+    ASSERT(url.protocolIsData());
+
+    auto task = createDecodeTask(url, { }, nullptr);
+    return decodeSynchronously(*task);
 }
-}
+
+} // namespace DataURLDecoder
+} // namespace WebCore

@@ -978,7 +978,7 @@
 		371F53E90D2704F900ECE0D5 /* CSSUnicodeRangeValue.h in Headers */ = {isa = PBXBuildFile; fileRef = 371F53E70D2704F900ECE0D5 /* CSSUnicodeRangeValue.h */; };
 		372ADA38197F47B900FC501E /* ProtectionSpaceCocoa.h in Headers */ = {isa = PBXBuildFile; fileRef = 372ADA37197F47B900FC501E /* ProtectionSpaceCocoa.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		372C00D9129619F8005C9575 /* FindOptions.h in Headers */ = {isa = PBXBuildFile; fileRef = 372C00D8129619F8005C9575 /* FindOptions.h */; settings = {ATTRIBUTES = (Private, ); }; };
-		372D3E54216578AE00C5E021 /* DataURLDecoder.h in Headers */ = {isa = PBXBuildFile; fileRef = E4A007821B820EC8002C5A6E /* DataURLDecoder.h */; };
+		372D3E54216578AE00C5E021 /* DataURLDecoder.h in Headers */ = {isa = PBXBuildFile; fileRef = E4A007821B820EC8002C5A6E /* DataURLDecoder.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		372D3E55216578AE00C5E021 /* ScriptModuleLoader.h in Headers */ = {isa = PBXBuildFile; fileRef = E38838951BAD145F00D62EE3 /* ScriptModuleLoader.h */; };
 		372D3E57216578AE00C5E021 /* NavigatorCredentials.h in Headers */ = {isa = PBXBuildFile; fileRef = 57D846261FE895F800CA3682 /* NavigatorCredentials.h */; };
 		375CD232119D43C800A2A859 /* Hyphenation.h in Headers */ = {isa = PBXBuildFile; fileRef = 375CD231119D43C800A2A859 /* Hyphenation.h */; };

@@ -37,6 +37,10 @@
 
 namespace WebCore {
 
+namespace DataURLDecoder {
+struct Result;
+}
+
 class ResourceResponse;
 
 bool isScriptAllowedByNosniff(const ResourceResponse&);
@@ -189,6 +193,8 @@ public:
 
     bool isRangeRequested() const { return m_isRangeRequested; }
     void setAsRangeRequested() { m_isRangeRequested = true; }
+
+    WEBCORE_EXPORT static ResourceResponse dataURLResponse(const URL&, const DataURLDecoder::Result&);
 
 protected:
     enum InitLevel {

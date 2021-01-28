@@ -41,7 +41,7 @@ struct Result {
     String mimeType;
     String charset;
     String contentType;
-    RefPtr<SharedBuffer> data;
+    Vector<char> data;
 };
 
 using DecodeCompletionHandler = WTF::Function<void (Optional<Result>)>;
@@ -52,6 +52,7 @@ struct ScheduleContext {
 };
 
 void decode(const URL&, const ScheduleContext&, DecodeCompletionHandler&&);
+WEBCORE_EXPORT Optional<Result> decode(const URL&);
 
 }
 
