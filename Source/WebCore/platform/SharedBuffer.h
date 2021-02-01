@@ -95,6 +95,7 @@ public:
 #endif
 
 #if USE(GLIB)
+    GRefPtr<GBytes> createGBytes() const;
     static Ref<SharedBuffer> create(GBytes*);
 #endif
 

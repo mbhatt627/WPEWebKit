@@ -55,4 +55,13 @@ RefPtr<SharedBuffer> SharedBuffer::createFromReadingFile(const String& filePath)
     return SharedBuffer::create(contents.get(), size);
 }
 
+GRefPtr<GBytes> SharedBuffer::createGBytes() const
+{
+    ref();
+    GRefPtr<GBytes> bytes = adoptGRef(g_bytes_new_with_free_func(data(), size(), [](gpointer data) {
+        static_cast<SharedBuffer*>(data)->deref();
+    }, const_cast<SharedBuffer*>(this)));
+    return bytes;
+}
+
 } // namespace WebCore

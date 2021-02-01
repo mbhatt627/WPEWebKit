@@ -26,6 +26,7 @@
 #pragma once
 
 #include "NetworkDataTask.h"
+#include <WebCore/DataURLDecoder.h>
 #include <WebCore/NetworkLoadMetrics.h>
 #include <WebCore/ProtectionSpace.h>
 #include <WebCore/ResourceResponse.h>
@@ -138,6 +139,8 @@ private:
     static void enumerateFileChildrenCallback(GFile*, GAsyncResult*, NetworkDataTaskSoup*);
     void didReadFile(GRefPtr<GInputStream>&&);
 
+    void didReadDataURL(Optional<WebCore::DataURLDecoder::Result>&&);
+
     State m_state { State::Suspended };
     WebCore::ContentSniffingPolicy m_shouldContentSniff;
     GRefPtr<SoupMessage> m_soupMessage;
@@ -146,6 +149,7 @@ private:
     GRefPtr<SoupMultipartInputStream> m_multipartInputStream;
     GRefPtr<GCancellable> m_cancellable;
     GRefPtr<GAsyncResult> m_pendingResult;
+    Optional<WebCore::DataURLDecoder::Result> m_pendingDataURLResult;
     WebCore::ProtectionSpace m_protectionSpaceForPersistentStorage;
     WebCore::Credential m_credentialForPersistentStorage;
     WebCore::ResourceRequest m_currentRequest;
