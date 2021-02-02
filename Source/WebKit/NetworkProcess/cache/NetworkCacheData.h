@@ -35,8 +35,8 @@
 #include <wtf/OSObjectPtr.h>
 #endif
 
-#if USE(SOUP)
-#include <WebCore/GRefPtrSoup.h>
+#if USE(GLIB)
+#include <wtf/glib/GRefPtr.h>
 #endif
 
 namespace WebKit {
@@ -61,8 +61,8 @@ public:
     enum class Backing { Buffer, Map };
     Data(OSObjectPtr<dispatch_data_t>&&, Backing = Backing::Buffer);
 #endif
-#if USE(SOUP)
-    Data(GRefPtr<SoupBuffer>&&, int fd = -1);
+#if USE(GLIB)
+    Data(GRefPtr<GBytes>&&, int fd = -1);
 #elif OS(WINDOWS)
     explicit Data(Vector<uint8_t>&&);
     Data(FileSystem::PlatformFileHandle, size_t offset, size_t);
@@ -85,15 +85,15 @@ public:
     dispatch_data_t dispatchData() const { return m_dispatchData.get(); }
 #endif
 
-#if USE(SOUP)
-    SoupBuffer* soupBuffer() const { return m_buffer.get(); }
+#if USE(GLIB)
+    GBytes* bytes() const { return m_buffer.get(); }
 #endif
 private:
 #if PLATFORM(COCOA)
     mutable OSObjectPtr<dispatch_data_t> m_dispatchData;
 #endif
-#if USE(SOUP)
-    mutable GRefPtr<SoupBuffer> m_buffer;
+#if USE(GLIB)
+    mutable GRefPtr<GBytes> m_buffer;
     int m_fileDescriptor { -1 };
 #endif
 #if OS(WINDOWS)
