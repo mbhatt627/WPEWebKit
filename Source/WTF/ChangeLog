@@ -1,3 +1,13 @@
+2021-02-02  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Migrate WebKitTestServer to libsoup 2.48 API
+        https://bugs.webkit.org/show_bug.cgi?id=219160
+        <rdar://problem/71620310>
+
+        Reviewed by Michael Catanzaro.
+
+        * wtf/Platform.h: Bump libsoup minimum required version to 2.54.
+
 2021-08-18  Xabier Rodriguez Calvar  <calvaris@igalia.com>
 
         [GStreamer][EME] Try to parse XML init datas that could possibly come from MPD manifests
