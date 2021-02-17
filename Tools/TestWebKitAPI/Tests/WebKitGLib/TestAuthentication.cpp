@@ -115,8 +115,8 @@ static void testWebViewAuthenticationRequest(AuthenticationTest* test, gconstpoi
     // Test authentication request getters match soup authentication header.
     test->loadURI(kServer->getURIForPath("/auth-test.html").data());
     WebKitAuthenticationRequest* request = test->waitForAuthenticationRequest();
-    g_assert_cmpstr(webkit_authentication_request_get_host(request), ==, soup_uri_get_host(kServer->baseURI()));
-    g_assert_cmpuint(webkit_authentication_request_get_port(request), ==, soup_uri_get_port(kServer->baseURI()));
+    ASSERT_CMP_CSTRING(webkit_authentication_request_get_host(request), ==, kServer->baseURL().host().toString().utf8());
+    g_assert_cmpuint(webkit_authentication_request_get_port(request), ==, kServer->port());
     g_assert_cmpstr(webkit_authentication_request_get_realm(request), ==, "my realm");
     g_assert_cmpint(webkit_authentication_request_get_scheme(request), ==, WEBKIT_AUTHENTICATION_SCHEME_HTTP_BASIC);
     g_assert_false(webkit_authentication_request_is_for_proxy(request));
@@ -367,10 +367,9 @@ public:
     ProxyAuthenticationTest()
     {
         m_proxyServer.run(serverCallback);
-        g_assert_nonnull(m_proxyServer.baseURI());
-        gProxyServerPort = soup_uri_get_port(m_proxyServer.baseURI());
-        GUniquePtr<char> proxyURI(soup_uri_to_string(m_proxyServer.baseURI(), FALSE));
-        WebKitNetworkProxySettings* settings = webkit_network_proxy_settings_new(proxyURI.get(), nullptr);
+        g_assert_false(m_proxyServer.baseURL().isNull());
+        gProxyServerPort = m_proxyServer.port();
+        WebKitNetworkProxySettings* settings = webkit_network_proxy_settings_new(m_proxyServer.baseURL().string().utf8().data(), nullptr);
         webkit_web_context_set_network_proxy_settings(m_webContext.get(), WEBKIT_NETWORK_PROXY_MODE_CUSTOM, settings);
         webkit_network_proxy_settings_free(settings);
     }
@@ -382,7 +381,7 @@ public:
 
     GUniquePtr<char> proxyServerPortAsString()
     {
-        GUniquePtr<char> port(g_strdup_printf("%u", soup_uri_get_port(m_proxyServer.baseURI())));
+        GUniquePtr<char> port(g_strdup_printf("%u", m_proxyServer.port()));
         return port;
     }
 
@@ -394,8 +393,8 @@ static void testWebViewAuthenticationProxy(ProxyAuthenticationTest* test, gconst
     test->loadURI(kServer->getURIForPath("/proxy/auth-test.html").data());
     WebKitAuthenticationRequest* request = test->waitForAuthenticationRequest();
     // FIXME: the uri and host should the proxy ones, not the requested ones.
-    g_assert_cmpstr(webkit_authentication_request_get_host(request), ==, soup_uri_get_host(kServer->baseURI()));
-    g_assert_cmpuint(webkit_authentication_request_get_port(request), ==, soup_uri_get_port(kServer->baseURI()));
+    ASSERT_CMP_CSTRING(webkit_authentication_request_get_host(request), ==, kServer->baseURL().host().toString().utf8());
+    g_assert_cmpuint(webkit_authentication_request_get_port(request), ==, kServer->port());
     g_assert_cmpstr(webkit_authentication_request_get_realm(request), ==, "Proxy realm");
     g_assert_cmpint(webkit_authentication_request_get_scheme(request), ==, WEBKIT_AUTHENTICATION_SCHEME_HTTP_BASIC);
     g_assert_true(webkit_authentication_request_is_for_proxy(request));
@@ -410,8 +409,8 @@ static void testWebViewAuthenticationProxyHTTPS(ProxyAuthenticationTest* test, g
     test->loadURI(httpsServer->getURIForPath("/proxy/auth-test.html").data());
     WebKitAuthenticationRequest* request = test->waitForAuthenticationRequest();
     // FIXME: the uri and host should the proxy ones, not the requested ones.
-    g_assert_cmpstr(webkit_authentication_request_get_host(request), ==, soup_uri_get_host(httpsServer->baseURI()));
-    g_assert_cmpuint(webkit_authentication_request_get_port(request), ==, soup_uri_get_port(httpsServer->baseURI()));
+    ASSERT_CMP_CSTRING(webkit_authentication_request_get_host(request), ==, httpsServer->baseURL().host().toString().utf8());
+    g_assert_cmpuint(webkit_authentication_request_get_port(request), ==, httpsServer->port());
     g_assert_cmpstr(webkit_authentication_request_get_realm(request), ==, "Proxy realm");
     g_assert_cmpint(webkit_authentication_request_get_scheme(request), ==, WEBKIT_AUTHENTICATION_SCHEME_HTTP_BASIC);
     g_assert_true(webkit_authentication_request_is_for_proxy(request));
