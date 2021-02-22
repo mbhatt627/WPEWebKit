@@ -91,20 +91,19 @@ static const char* schemeFromProtectionSpaceServerType(ProtectionSpaceServerType
     switch (serverType) {
     case ProtectionSpaceServerHTTP:
     case ProtectionSpaceProxyHTTP:
-        return SOUP_URI_SCHEME_HTTP;
+        return "http";
     case ProtectionSpaceServerHTTPS:
     case ProtectionSpaceProxyHTTPS:
-        return SOUP_URI_SCHEME_HTTPS;
+        return "https";
     case ProtectionSpaceServerFTP:
     case ProtectionSpaceProxyFTP:
-        return SOUP_URI_SCHEME_FTP;
+        return "ftp";
     case ProtectionSpaceServerFTPS:
     case ProtectionSpaceProxySOCKS:
         break;
     }
 
-    ASSERT_NOT_REACHED();
-    return SOUP_URI_SCHEME_HTTP;
+    RELEASE_ASSERT_NOT_REACHED();
 }
 
 static const char* authTypeFromProtectionSpaceAuthenticationScheme(ProtectionSpaceAuthenticationScheme scheme)
@@ -130,8 +129,7 @@ static const char* authTypeFromProtectionSpaceAuthenticationScheme(ProtectionSpa
         return "unknown";
     }
 
-    ASSERT_NOT_REACHED();
-    return "unknown";
+    RELEASE_ASSERT_NOT_REACHED();
 }
 
 struct SecretServiceSearchData {
@@ -272,11 +270,12 @@ void NetworkStorageSession::setCookiesFromDOM(const URL& firstParty, const SameS
 {
     UNUSED_PARAM(frameID);
     UNUSED_PARAM(pageID);
-    GUniquePtr<SoupURI> origin = urlToSoupURI(url);
+
+    auto origin = urlToSoupURI(url);
     if (!origin)
         return;
 
-    GUniquePtr<SoupURI> firstPartyURI = urlToSoupURI(firstParty);
+    auto firstPartyURI = urlToSoupURI(firstParty);
     if (!firstPartyURI)
         return;
 
@@ -312,8 +311,8 @@ void NetworkStorageSession::setCookies(const Vector<Cookie>& cookies, const URL&
 {
     for (auto cookie : cookies) {
 #if SOUP_CHECK_VERSION(2, 67, 1)
-        GUniquePtr<SoupURI> origin = urlToSoupURI(url);
-        GUniquePtr<SoupURI> firstPartyURI = urlToSoupURI(firstParty);
+        auto origin = urlToSoupURI(url);
+        auto firstPartyURI = urlToSoupURI(firstParty);
 
         soup_cookie_jar_add_cookie_full(cookieStorage(), cookie.toSoupCookie(), origin.get(), firstPartyURI.get());
 #else
@@ -335,7 +334,7 @@ void NetworkStorageSession::deleteCookie(const Cookie& cookie)
 
 void NetworkStorageSession::deleteCookie(const URL& url, const String& name) const
 {
-    GUniquePtr<SoupURI> uri = urlToSoupURI(url);
+    auto uri = urlToSoupURI(url);
     if (!uri)
         return;
 
@@ -348,7 +347,7 @@ void NetworkStorageSession::deleteCookie(const URL& url, const String& name) con
     bool wasDeleted = false;
     for (GSList* iter = cookies.get(); iter; iter = g_slist_next(iter)) {
         SoupCookie* cookie = static_cast<SoupCookie*>(iter->data);
-        if (!wasDeleted && cookieName == cookie->name) {
+        if (!wasDeleted && cookieName == soup_cookie_get_name(cookie)) {
             soup_cookie_jar_delete_cookie(jar, cookie);
             wasDeleted = true;
         }
@@ -405,8 +404,8 @@ void NetworkStorageSession::getHostnamesWithCookies(HashSet<String>& hostnames)
     GUniquePtr<GSList> cookies(soup_cookie_jar_all_cookies(cookieStorage()));
     for (GSList* item = cookies.get(); item; item = g_slist_next(item)) {
         SoupCookie* cookie = static_cast<SoupCookie*>(item->data);
-        if (cookie->domain)
-            hostnames.add(String::fromUTF8(cookie->domain));
+        if (const char* domain = soup_cookie_get_domain(cookie))
+            hostnames.add(String::fromUTF8(domain));
         soup_cookie_free(cookie);
     }
 }
@@ -420,7 +419,7 @@ Vector<Cookie> NetworkStorageSession::getAllCookies()
 Vector<Cookie> NetworkStorageSession::getCookies(const URL& url)
 {
     Vector<Cookie> cookies;
-    GUniquePtr<SoupURI> uri = urlToSoupURI(url);
+    auto uri = urlToSoupURI(url);
     if (!uri)
         return cookies;
 
@@ -433,9 +432,16 @@ Vector<Cookie> NetworkStorageSession::getCookies(const URL& url)
     return cookies;
 }
 
-void NetworkStorageSession::hasCookies(const RegistrableDomain&, CompletionHandler<void(bool)>&& completionHandler) const
+void NetworkStorageSession::hasCookies(const RegistrableDomain& domain, CompletionHandler<void(bool)>&& completionHandler) const
 {
-    // FIXME: Implement.
+    GUniquePtr<GSList> cookies(soup_cookie_jar_all_cookies(cookieStorage()));
+    for (auto* item = cookies.get(); item; item = g_slist_next(item)) {
+        GUniquePtr<SoupCookie> cookie(static_cast<SoupCookie*>(item->data));
+        if (RegistrableDomain::uncheckedCreateFromHost(soup_cookie_get_domain(cookie.get())) == domain) {
+            completionHandler(true);
+            return;
+        }
+    }
     completionHandler(false);
 }
 
@@ -451,16 +457,16 @@ bool NetworkStorageSession::getRawCookies(const URL& firstParty, const SameSiteI
     UNUSED_PARAM(pageID);
 #endif
 
-    GUniquePtr<SoupURI> uri = urlToSoupURI(url);
+    auto uri = urlToSoupURI(url);
     if (!uri)
         return false;
 
 #if SOUP_CHECK_VERSION(2, 69, 90)
-    GUniquePtr<SoupURI> firstPartyURI = urlToSoupURI(sameSiteInfo.isSameSite ? url : firstParty);
+    auto firstPartyURI = urlToSoupURI(sameSiteInfo.isSameSite ? url : firstParty);
     if (!firstPartyURI)
         return false;
 
-    GUniquePtr<SoupURI> cookieURI = sameSiteInfo.isSameSite ? urlToSoupURI(url) : nullptr;
+    auto cookieURI = sameSiteInfo.isSameSite ? urlToSoupURI(url) : nullptr;
     GUniquePtr<GSList> cookies(soup_cookie_jar_get_cookie_list_with_same_site_info(cookieStorage(), uri.get(), firstPartyURI.get(), cookieURI.get(), TRUE, sameSiteInfo.isSafeHTTPMethod, sameSiteInfo.isTopSite));
 #else
     GUniquePtr<GSList> cookies(soup_cookie_jar_get_cookie_list(cookieStorage(), uri.get(), TRUE));
@@ -489,16 +495,16 @@ static std::pair<String, bool> cookiesForSession(const NetworkStorageSession& se
     UNUSED_PARAM(pageID);
 #endif
 
-    GUniquePtr<SoupURI> uri = urlToSoupURI(url);
+    auto uri = urlToSoupURI(url);
     if (!uri)
         return { { }, false };
 
 #if SOUP_CHECK_VERSION(2, 69, 90)
-    GUniquePtr<SoupURI> firstPartyURI = urlToSoupURI(firstParty);
+    auto firstPartyURI = urlToSoupURI(firstParty);
     if (!firstPartyURI)
         return { { }, false };
 
-    GUniquePtr<SoupURI> cookieURI = sameSiteInfo.isSameSite ? urlToSoupURI(url) : nullptr;
+    auto cookieURI = sameSiteInfo.isSameSite ? urlToSoupURI(url) : nullptr;
     GSList* cookies = soup_cookie_jar_get_cookie_list_with_same_site_info(session.cookieStorage(), uri.get(), firstPartyURI.get(), cookieURI.get(), forHTTPHeader, sameSiteInfo.isSafeHTTPMethod, sameSiteInfo.isTopSite);
 #else
     GSList* cookies = soup_cookie_jar_get_cookie_list(session.cookieStorage(), uri.get(), forHTTPHeader);

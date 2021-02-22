@@ -33,6 +33,7 @@
 #include "GUniquePtrSoup.h"
 #include "Logging.h"
 #include "SoupNetworkProxySettings.h"
+#include "SoupVersioning.h"
 #include <glib/gstdio.h>
 #include <libsoup/soup.h>
 #include <pal/crypto/CryptoDigest.h>
@@ -116,8 +117,7 @@ static AllowedCertificatesMap& allowedCertificates()
 }
 
 SoupNetworkSession::SoupNetworkSession(PAL::SessionID sessionID)
-    : m_soupSession(adoptGRef(soup_session_new()))
-    , m_sessionID(sessionID)
+    : m_sessionID(sessionID)
 {
     // Values taken from http://www.browserscope.org/ following
     // the rule "Do What Every Other Modern Browser Is Doing". They seem
@@ -126,25 +126,22 @@ SoupNetworkSession::SoupNetworkSession(PAL::SessionID sessionID)
     static const int maxConnections = 17;
     static const int maxConnectionsPerHost = 6;
 
-    g_object_set(m_soupSession.get(),
-        SOUP_SESSION_MAX_CONNS, maxConnections,
-        SOUP_SESSION_MAX_CONNS_PER_HOST, maxConnectionsPerHost,
-        SOUP_SESSION_TIMEOUT, 0,
-        SOUP_SESSION_IDLE_TIMEOUT, 0,
-        SOUP_SESSION_ADD_FEATURE_BY_TYPE, SOUP_TYPE_CONTENT_SNIFFER,
+    m_soupSession = adoptGRef(soup_session_new_with_options(
+        "max-conns", maxConnections,
+        "max-conns-per-host", maxConnectionsPerHost,
+        "timeout", 0,
+        nullptr));
+
+    soup_session_add_feature_by_type(m_soupSession.get(), SOUP_TYPE_CONTENT_SNIFFER);
 #if SOUP_CHECK_VERSION(2, 67, 90)
-        SOUP_SESSION_ADD_FEATURE_BY_TYPE, SOUP_TYPE_WEBSOCKET_EXTENSION_MANAGER,
+    soup_session_add_feature_by_type(m_soupSession.get(), SOUP_TYPE_WEBSOCKET_EXTENSION_MANAGER);
 #endif
-        nullptr);
 
     if (!initialAcceptLanguages().isNull())
         setAcceptLanguages(initialAcceptLanguages());
 
-    if (soup_auth_negotiate_supported() && !m_sessionID.isEphemeral()) {
-        g_object_set(m_soupSession.get(),
-            SOUP_SESSION_ADD_FEATURE_BY_TYPE, SOUP_TYPE_AUTH_NEGOTIATE,
-            nullptr);
-    }
+    if (soup_auth_negotiate_supported() && !m_sessionID.isEphemeral())
+        soup_session_add_feature_by_type(m_soupSession.get(), SOUP_TYPE_AUTH_NEGOTIATE);
 
     if (proxySettings().mode != SoupNetworkProxySettings::Mode::Default)
         setupProxy();
@@ -160,7 +157,11 @@ void SoupNetworkSession::setupLogger()
     if (LogNetwork.state != WTFLogChannelState::On || soup_session_get_feature(m_soupSession.get(), SOUP_TYPE_LOGGER))
         return;
 
+#if USE(SOUP2)
     GRefPtr<SoupLogger> logger = adoptGRef(soup_logger_new(SOUP_LOGGER_LOG_BODY, -1));
+#else
+    GRefPtr<SoupLogger> logger = adoptGRef(soup_logger_new(SOUP_LOGGER_LOG_BODY));
+#endif
     soup_session_add_feature(m_soupSession.get(), SOUP_SESSION_FEATURE(logger.get()));
     soup_logger_set_printer(logger.get(), soupLogPrinter, nullptr, nullptr);
 #endif
@@ -249,9 +250,13 @@ void SoupNetworkSession::clearHSTSCache(WallTime modifiedSince)
     GUniquePtr<GList> policies(soup_hsts_enforcer_get_policies(enforcer, FALSE));
     for (GList* iter = policies.get(); iter != nullptr; iter = iter->next) {
         GUniquePtr<SoupHSTSPolicy> policy(static_cast<SoupHSTSPolicy*>(iter->data));
+#if USE(SOUP2)
         auto modified = soup_date_to_time_t(policy.get()->expires) - policy.get()->max_age;
+#else
+        auto modified = g_date_time_to_unix(soup_hsts_policy_get_expires(policy.get())) - soup_hsts_policy_get_max_age(policy.get());
+#endif
         if (modified >= modifiedSince.secondsSinceEpoch().seconds()) {
-            GUniquePtr<SoupHSTSPolicy> newPolicy(soup_hsts_policy_new(policy.get()->domain, SOUP_HSTS_POLICY_MAX_AGE_PAST, FALSE));
+            GUniquePtr<SoupHSTSPolicy> newPolicy(soup_hsts_policy_new(soup_hsts_policy_get_domain(policy.get()), SOUP_HSTS_POLICY_MAX_AGE_PAST, FALSE));
             soup_hsts_enforcer_set_policy(enforcer, newPolicy.get());
         }
     }
@@ -297,10 +302,8 @@ void SoupNetworkSession::setupProxy()
     GRefPtr<GProxyResolver> resolver;
     switch (proxySettings().mode) {
     case SoupNetworkProxySettings::Mode::Default: {
-        GRefPtr<GProxyResolver> currentResolver;
-        g_object_get(m_soupSession.get(), SOUP_SESSION_PROXY_RESOLVER, &currentResolver.outPtr(), nullptr);
         GProxyResolver* defaultResolver = g_proxy_resolver_get_default();
-        if (currentResolver.get() == defaultResolver)
+        if (defaultResolver == soup_session_get_proxy_resolver(m_soupSession.get()))
             return;
         resolver = defaultResolver;
         break;
@@ -319,7 +322,7 @@ void SoupNetworkSession::setupProxy()
         break;
     }
 
-    g_object_set(m_soupSession.get(), SOUP_SESSION_PROXY_RESOLVER, resolver.get(), nullptr);
+    soup_session_set_proxy_resolver(m_soupSession.get(), resolver.get());
     soup_session_abort(m_soupSession.get());
 }
 
@@ -335,7 +338,7 @@ void SoupNetworkSession::setInitialAcceptLanguages(const CString& languages)
 
 void SoupNetworkSession::setAcceptLanguages(const CString& languages)
 {
-    g_object_set(m_soupSession.get(), "accept-language", languages.data(), nullptr);
+    soup_session_set_accept_language(m_soupSession.get(), languages.data());
 }
 
 void SoupNetworkSession::setShouldIgnoreTLSErrors(bool ignoreTLSErrors)
