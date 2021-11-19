@@ -95,7 +95,7 @@ private:
     GstPadProbeReturn appsrcEndOfAppendCheckerProbe(GstPadProbeInfo*);
 
     void disconnectAppsinkAndRebuildPipeline();
-    void disconnectAppsinkSendEOSOnParserIfNeededAndRebuildPipeline();
+    GstPadProbeReturn rebuildPipelineIfNeeded(GstCaps*);
 
     static void staticInitialization();
 
@@ -153,6 +153,8 @@ private:
     AbortableTaskQueue m_taskQueue;
 
     GRefPtr<GstBuffer> m_pendingBuffer;
+
+    Lock m_pipelineConstructionLock;
 };
 
 } // namespace WebCore.
