@@ -753,13 +753,10 @@ void webKitMediaSrcPrepareInitialSeek(WebKitMediaSrc* source, double rate, const
     source->priv->appsrcNeedDataCount = 0;
 
     for (Stream* stream : source->priv->streams) {
-        stream->appsrcNeedDataFlag = false;
         // Don't allow samples away from the seekTime to be enqueued.
         stream->lastEnqueuedTime = seekTime;
     }
 
-    // The pending action will be performed in enabledAppsrcSeekData().
-    source->priv->appsrcSeekDataNextAction = MediaSourceSeekToTime;
 
     GUniquePtr<GstSegment> segment(gst_segment_new());
     segment->format = GST_FORMAT_TIME;
