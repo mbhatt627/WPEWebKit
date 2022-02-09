@@ -107,7 +107,7 @@ private:
     mutable bool m_eosPending = false;
     bool m_gstSeekCompleted = true;
     RefPtr<MediaSourcePrivateClient> m_mediaSource;
-    MediaTime m_mediaTimeDuration;
+    MediaTime m_mediaTimeDuration { MediaTime::invalidTime() };
     bool m_mseSeekCompleted = true;
     bool m_areDurationChangesBlocked = false;
     bool m_shouldReportDurationWhenUnblocking = false;
