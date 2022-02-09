@@ -141,15 +141,30 @@ public:
         return equalIgnoringASCIICase(keySystem, s_ClearKeyKeySystem);
     }
 
+    static bool isClearKeyUUID(const String& uuid)
+    {
+        return equalIgnoringASCIICase(uuid, s_ClearKeyUUID);
+    }
+
 #if ENABLE(THUNDER)
     static bool isWidevineKeySystem(const String& keySystem)
     {
         return equalIgnoringASCIICase(keySystem, s_WidevineKeySystem);
     }
 
+    static bool isWidevineUUID(const String& uuid)
+    {
+        return equalIgnoringASCIICase(uuid, s_WidevineUUID);
+    }
+
     static bool isPlayReadyKeySystem(const String& keySystem)
     {
         return equalIgnoringASCIICase(keySystem, s_PlayReadyKeySystems[0]) || equalIgnoringASCIICase(keySystem, s_PlayReadyKeySystems[1]);
+    }
+
+    static bool isPlayReadyUUID(const String& uuid)
+    {
+        return equalIgnoringASCIICase(uuid, s_PlayReadyUUID);
     }
 #endif
 
@@ -164,6 +179,23 @@ public:
 
         if (isPlayReadyKeySystem(keySystem))
             return s_PlayReadyUUID;
+#endif
+
+        ASSERT_NOT_REACHED();
+        return { };
+    }
+
+    static const char* uuidToKeySystem(const String& uuid)
+    {
+        if (isClearKeyUUID(uuid))
+            return s_ClearKeyKeySystem;
+
+#if ENABLE(THUNDER)
+        if (isWidevineUUID(uuid))
+            return s_WidevineKeySystem;
+
+        if (isPlayReadyUUID(uuid))
+            return s_PlayReadyKeySystems[0];
 #endif
 
         ASSERT_NOT_REACHED();
