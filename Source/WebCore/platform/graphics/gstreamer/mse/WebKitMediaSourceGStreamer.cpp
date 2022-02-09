@@ -158,6 +158,7 @@ static void enabledAppsrcEnoughData(GstAppSrc *appsrc, gpointer userData)
     if (!stream || stream->type == WebCore::Invalid)
         return;
 
+    webKitMediaSrc->priv->notifier->cancelPendingNotifications(WebKitMediaSrcMainThreadNotification::ReadyForMoreSamples);
     stream->sourceBuffer->setReadyForMoreSamples(false);
 }
 
