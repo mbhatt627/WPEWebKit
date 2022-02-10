@@ -929,7 +929,7 @@ void SourceBuffer::removeTimerFired()
     scheduleEvent(eventNames().updateendEvent);
 }
 
-void SourceBuffer::evictCodedFrames(size_t newDataSize)
+void SourceBuffer::evictCodedFrames(size_t newDataSize, const Seconds& timeChunkAsSeconds)
 {
     // 3.5.13 Coded Frame Eviction Algorithm
     // http://www.w3.org/TR/media-source/#sourcebuffer-coded-frame-eviction
@@ -945,22 +945,30 @@ void SourceBuffer::evictCodedFrames(size_t newDataSize)
 
     size_t maximumBufferSize = this->maximumBufferSize();
 
+    // Check if app has removed enough already.
+    if (extraMemoryCost() + newDataSize < maximumBufferSize) {
+        m_bufferFull = false;
+        return;
+    }
+
     // 3. Let removal ranges equal a list of presentation time ranges that can be evicted from
     // the presentation to make room for the new data.
 
-    // NOTE: begin by removing data from the beginning of the buffered ranges, 30 seconds at
-    // a time, up to 30 seconds before currentTime.
-    MediaTime thirtySeconds = MediaTime(30, 1);
+    // NOTE: begin by removing data from the beginning of the buffered ranges, timeChunk seconds at
+    // a time, up to timeChunk seconds before currentTime.
     MediaTime currentTime = m_source->currentTime();
-    MediaTime maximumRangeEnd = currentTime - thirtySeconds;
+    uint64_t timeChunkAsInteger = timeChunkAsSeconds.secondsAs<uint64_t>();
+    MediaTime timeChunk = MediaTime(timeChunkAsInteger, 1);
+    MediaTime maximumRangeEnd = currentTime - timeChunk;
 
 #if !RELEASE_LOG_DISABLED
     DEBUG_LOG(LOGIDENTIFIER, "currentTime = ", m_source->currentTime(), ", require ", extraMemoryCost() + newDataSize, " bytes, maximum buffer size is ", maximumBufferSize);
     size_t initialBufferedSize = extraMemoryCost();
 #endif
 
-    MediaTime rangeStart = MediaTime::zeroTime();
-    MediaTime rangeEnd = rangeStart + thirtySeconds;
+    const auto& buffered = m_buffered->ranges();
+    MediaTime rangeStart = buffered.minimumBufferedTime();
+    MediaTime rangeEnd = rangeStart + timeChunk;
     while (rangeStart < maximumRangeEnd) {
         // 4. For each range in removal ranges, run the coded frame removal algorithm with start and
         // end equal to the removal range start and end timestamp respectively.
@@ -970,38 +978,22 @@ void SourceBuffer::evictCodedFrames(size_t newDataSize)
             break;
         }
 
-        rangeStart += thirtySeconds;
-        rangeEnd += thirtySeconds;
+        rangeStart += timeChunk;
+        rangeEnd += timeChunk;
     }
 
-#if !RELEASE_LOG_DISABLED
     if (!m_bufferFull) {
         DEBUG_LOG(LOGIDENTIFIER, "evicted ", initialBufferedSize - extraMemoryCost());
         return;
     }
-#endif
 
-    // If there still isn't enough free space and there buffers in time ranges after the current range (ie. there is a gap after
-    // the current buffered range), delete 30 seconds at a time from duration back to the current time range or 30 seconds after
-    // currenTime whichever we hit first.
-    auto buffered = m_buffered->ranges();
+
+    MediaTime minimumRangeStart = currentTime + timeChunk;
     size_t currentTimeRange = buffered.find(currentTime);
-    if (currentTimeRange == buffered.length() - 1) {
-#if !RELEASE_LOG_DISABLED
-        ERROR_LOG(LOGIDENTIFIER, "FAILED to free enough after evicting ", initialBufferedSize - extraMemoryCost());
-#endif
-        return;
-    }
 
-    MediaTime minimumRangeStart = currentTime + thirtySeconds;
+    rangeEnd = buffered.maximumBufferedTime();
+    rangeStart = rangeEnd - timeChunk;
 
-    rangeEnd = m_source->duration();
-    if (!rangeEnd.isFinite()) {
-        rangeEnd = buffered.maximumBufferedTime();
-        DEBUG_LOG(LOGIDENTIFIER, "MediaSource duration is not a finite value, using maximum buffered time: ", rangeEnd);
-    }
-
-    rangeStart = rangeEnd - thirtySeconds;
     while (rangeStart > minimumRangeStart) {
 
         // Do not evict data from the time range that contains currentTime.
@@ -1022,16 +1014,18 @@ void SourceBuffer::evictCodedFrames(size_t newDataSize)
             break;
         }
 
-        rangeStart -= thirtySeconds;
-        rangeEnd -= thirtySeconds;
+        rangeStart -= timeChunk;
+        rangeEnd -= timeChunk;
     }
 
-#if !RELEASE_LOG_DISABLED
-    if (m_bufferFull)
-        ERROR_LOG(LOGIDENTIFIER, "FAILED to free enough after evicting ", initialBufferedSize - extraMemoryCost());
-    else
+    if (m_bufferFull) {
+        timeChunkAsInteger /= 2;
+        if (timeChunkAsInteger >= 5)
+            evictCodedFrames(newDataSize, Seconds(timeChunkAsInteger));
+        else
+            ERROR_LOG(LOGIDENTIFIER, "FAILED to free enough after evicting ", initialBufferedSize - extraMemoryCost());
+    } else
         DEBUG_LOG(LOGIDENTIFIER, "evicted ", initialBufferedSize - extraMemoryCost());
-#endif
 }
 
 size_t SourceBuffer::maxBufferSizeVideo = 0;
