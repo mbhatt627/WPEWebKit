@@ -135,7 +135,7 @@ static void enabledAppsrcNeedData(GstAppSrc* appsrc, guint, gpointer userData)
         appsrcStream = getStreamByAppsrc(webKitMediaSrc, GST_ELEMENT(appsrc));
 
         if (appsrcStream && appsrcStream->type != WebCore::Invalid)
-            webKitMediaSrc->priv->notifier->notify(WebKitMediaSrcMainThreadNotification::ReadyForMoreSamples, [webKitMediaSrc, appsrcStream] {
+            appsrcStream->notifier->notify(WebKitMediaSrcMainThreadNotification::ReadyForMoreSamples, [webKitMediaSrc, appsrcStream] {
                 notifyReadyForMoreSamplesMainThread(webKitMediaSrc, appsrcStream);
             });
 
@@ -158,7 +158,7 @@ static void enabledAppsrcEnoughData(GstAppSrc *appsrc, gpointer userData)
     if (!stream || stream->type == WebCore::Invalid)
         return;
 
-    webKitMediaSrc->priv->notifier->cancelPendingNotifications(WebKitMediaSrcMainThreadNotification::ReadyForMoreSamples);
+    stream->notifier->cancelPendingNotifications(WebKitMediaSrcMainThreadNotification::ReadyForMoreSamples);
     stream->sourceBuffer->setReadyForMoreSamples(false);
 }
 
@@ -510,6 +510,8 @@ void webKitMediaSrcLinkSourcePad(GstPad* sourcePad, GstCaps* caps, Stream* strea
 
 void webKitMediaSrcFreeStream(WebKitMediaSrc* source, Stream* stream)
 {
+    stream->notifier->invalidate();
+
     if (GST_IS_APP_SRC(stream->appsrc)) {
         // Don't trigger callbacks from this appsrc to avoid using the stream anymore.
         gst_app_src_set_callbacks(GST_APP_SRC(stream->appsrc), &disabledAppsrcCallbacks, nullptr, nullptr);

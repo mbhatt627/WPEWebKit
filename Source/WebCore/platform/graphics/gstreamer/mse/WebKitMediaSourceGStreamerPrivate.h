@@ -46,6 +46,11 @@ void webKitMediaSrcUriHandlerInit(gpointer, gpointer);
 
 typedef struct _Stream Stream;
 
+enum WebKitMediaSrcMainThreadNotification {
+    ReadyForMoreSamples = 1 << 0,
+    SeekNeedsData = 1 << 1
+};
+
 struct _Stream {
     // Fields filled when the Stream is created.
     WebKitMediaSrc* parent;
@@ -72,6 +77,8 @@ struct _Stream {
     // Used to enforce continuity in the appended data and avoid breaking the decoder.
     // Only used from the main thread.
     MediaTime lastEnqueuedTime;
+
+    RefPtr<WebCore::MainThreadNotifier<WebKitMediaSrcMainThreadNotification>> notifier;
 };
 
 enum {
@@ -93,11 +100,6 @@ enum {
 enum OnSeekDataAction {
     Nothing,
     MediaSourceSeekToTime
-};
-
-enum WebKitMediaSrcMainThreadNotification {
-    ReadyForMoreSamples = 1 << 0,
-    SeekNeedsData = 1 << 1
 };
 
 struct _WebKitMediaSrcPrivate {
