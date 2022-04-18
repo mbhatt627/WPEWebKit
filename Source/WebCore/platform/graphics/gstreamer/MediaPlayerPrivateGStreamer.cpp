@@ -3837,6 +3837,15 @@ WTFLogChannel& MediaPlayerPrivateGStreamer::logChannel() const
 void MediaPlayerPrivateGStreamer::elementSetupCallback(MediaPlayerPrivateGStreamer* player, GstElement* element, GstElement* /*pipeline*/)
 {
     GST_DEBUG("Element set-up for %s", GST_ELEMENT_NAME(element));
+
+    if(g_str_has_prefix(GST_ELEMENT_NAME(element), "amlhalasink"))
+    {
+        GST_INFO("Set property disable-xrun to TRUE");
+        g_object_set(element, "disable-xrun", TRUE, nullptr);
+        if (player->hasVideo())
+            g_object_set(G_OBJECT(element), "wait-video", TRUE, nullptr);
+    }
+
 #if PLATFORM(BROADCOM)
     if (g_str_has_prefix(GST_ELEMENT_NAME(element), "brcmaudiosink")) {
         g_object_set(G_OBJECT(element), "async", TRUE, nullptr);
