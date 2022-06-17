@@ -3856,8 +3856,7 @@ void MediaPlayerPrivateGStreamer::elementSetupCallback(MediaPlayerPrivateGStream
     GST_DEBUG("Element set-up for %s", GST_ELEMENT_NAME(element));
 
 #if PLATFORM(AMLOGIC)
-    if(!g_strcmp0(G_OBJECT_TYPE_NAME(G_OBJECT(element)), "GstAmlHalAsink"))
-    {
+    if(!g_strcmp0(G_OBJECT_TYPE_NAME(G_OBJECT(element)), "GstAmlHalAsink")) {
         GST_INFO("Set property disable-xrun to TRUE");
         g_object_set(element, "disable-xrun", TRUE, nullptr);
         if (player->hasVideo())
