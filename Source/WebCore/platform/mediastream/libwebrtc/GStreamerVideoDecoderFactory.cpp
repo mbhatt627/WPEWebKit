@@ -74,6 +74,25 @@ public:
         if (gst_pad_link(srcpad, sinkpad) != GST_PAD_LINK_OK)
             ASSERT_NOT_REACHED();
     }
+#if PLATFORM(BROADCOM)
+    static unsigned getGstAutoplugSelectResult(const char* nick)
+    {
+        static GEnumClass* enumClass = static_cast<GEnumClass*>(g_type_class_ref(g_type_from_name("GstAutoplugSelectResult")));
+        ASSERT(enumClass);
+        GEnumValue* ev = g_enum_get_value_by_nick(enumClass, nick);
+        if (!ev)
+            return 0;
+        return ev->value;
+    }
+    static unsigned decodebinAutoplugSelect(GstElement *, GstPad *, GstCaps *, GstElementFactory *factory, gpointer)
+    {
+        if (g_str_has_prefix(gst_plugin_feature_get_plugin_name(GST_PLUGIN_FEATURE_CAST(factory)), "brcm")) {
+            return getGstAutoplugSelectResult("skip");
+        }
+        return getGstAutoplugSelectResult("try");
+    }
+#endif
+
 
     GstElement* pipeline()
     {
@@ -105,6 +124,9 @@ public:
 
         auto sinkpad = adoptGRef(gst_element_get_static_pad(capsfilter, "sink"));
         g_signal_connect(decoder, "pad-added", G_CALLBACK(decodebinPadAddedCb), sinkpad.get());
+#if PLATFORM(BROADCOM)
+        g_signal_connect(decoder, "autoplug-select", G_CALLBACK(decodebinAutoplugSelect), nullptr);
+#endif
         // Make the decoder output "parsed" frames only and let the main decodebin
         // do the real decoding. This allows us to have optimized decoding/rendering
         // happening in the main pipeline.

@@ -274,6 +274,7 @@ struct _WebKitMediaStreamSrc {
 
     SourceData audioSrc;
     SourceData videoSrc;
+    gboolean firstVideoSampleSeen;
 
     std::unique_ptr<WebKitMediaStreamTrackObserver> mediaStreamTrackObserver;
     std::unique_ptr<WebKitMediaStreamObserver> mediaStreamObserver;
@@ -629,11 +630,15 @@ bool webkitMediaStreamSrcSetStream(WebKitMediaStreamSrc* self, MediaStreamPrivat
 
 static void webkitMediaStreamSrcPushVideoSample(WebKitMediaStreamSrc* self, GstSample* gstsample)
 {
+   if (self->firstVideoSampleSeen == FALSE)
+      self->firstVideoSampleSeen = TRUE;
     self->videoSrc.pushSample(gstsample);
 }
 
 static void webkitMediaStreamSrcPushAudioSample(WebKitMediaStreamSrc* self, GstSample* gstsample)
 {
+    if (self->videoSrc.src()  && self->firstVideoSampleSeen == FALSE)
+        return;
     self->audioSrc.pushSample(gstsample);
 }
 
