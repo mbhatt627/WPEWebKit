@@ -3981,11 +3981,17 @@ void MediaPlayerPrivateGStreamer::configureElement(GstElement* element)
         g_object_set(G_OBJECT(element), "high-watermark", 0.10, nullptr);
 
 #if ENABLE(MEDIA_STREAM) && PLATFORM(REALTEK)
-    if (m_streamPrivate != nullptr && g_object_class_find_property (G_OBJECT_GET_CLASS (element), "media-tunnel")) {
-        GST_INFO("Enable 'immediate-output' in rtkaudiosink");
-        g_object_set (G_OBJECT(element), "media-tunnel", FALSE, nullptr);
-        g_object_set (G_OBJECT(element), "audio-service", TRUE, nullptr);
-        g_object_set (G_OBJECT(element), "lowdelay-sync-mode", TRUE, nullptr);
+    if (m_streamPrivate != nullptr) {
+        if (g_object_class_find_property (G_OBJECT_GET_CLASS (element), "media-tunnel")) {
+            GST_INFO("Enable 'immediate-output' in rtkaudiosink");
+            g_object_set (G_OBJECT(element), "media-tunnel", FALSE, nullptr);
+            g_object_set (G_OBJECT(element), "audio-service", TRUE, nullptr);
+            g_object_set (G_OBJECT(element), "lowdelay-sync-mode", TRUE, nullptr);
+        }
+        if (g_object_class_find_property (G_OBJECT_GET_CLASS (element), "lowdelay-mode")) {
+            GST_INFO("Enable 'lowdelay-mode' in rtk omx decoder");
+            g_object_set (G_OBJECT(element), "lowdelay-mode", TRUE, nullptr);
+        }
     }
 #endif
 }
