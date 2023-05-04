@@ -3986,6 +3986,13 @@ void MediaPlayerPrivateGStreamer::configureElement(GstElement* element)
         g_object_set (G_OBJECT(element), "media-tunnel", FALSE, nullptr);
         g_object_set (G_OBJECT(element), "audio-service", TRUE, nullptr);
         g_object_set (G_OBJECT(element), "lowdelay-sync-mode", TRUE, nullptr);
+    if (g_str_has_prefix(GST_ELEMENT_NAME(element), "omx")) {
+        GST_INFO("omx name: %s, have lowdelay-mode=%d, m_streamPrivate=%p", GST_ELEMENT_NAME(element), g_object_class_find_property (G_OBJECT_GET_CLASS (element), "lowdelay-mode"), m_streamPrivate);
+    }
+    if (m_streamPrivate != nullptr && g_object_class_find_property (G_OBJECT_GET_CLASS (element), "lowdelay-mode")) {
+        GST_INFO("Enable 'lowdelay-mode' in rtk omx decoder");
+        g_object_set (G_OBJECT(element), "lowdelay-mode", TRUE, nullptr);
+    }
     }
 #endif
 }
