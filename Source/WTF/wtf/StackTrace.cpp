@@ -30,6 +30,11 @@
 #include <wtf/Assertions.h>
 #include <wtf/PrintStream.h>
 
+#if USE(LIBBACKTRACE)
+#include <string.h>
+#include <wtf/NeverDestroyed.h>
+#endif
+
 #if HAVE(BACKTRACE_SYMBOLS) || HAVE(BACKTRACE)
 #include <execinfo.h>
 #endif
@@ -57,6 +62,55 @@ void WTFGetBacktrace(void** stack, int* size)
 }
 
 namespace WTF {
+
+#if USE(LIBBACKTRACE)
+static struct backtrace_state* backtraceState()
+{
+    static NeverDestroyed<struct backtrace_state*> backtraceState = backtrace_create_state(nullptr, 1, nullptr, nullptr);
+    return backtraceState;
+}
+
+static void backtraceSyminfoCallback(void* data, uintptr_t, const char* symname, uintptr_t, uintptr_t)
+{
+    const char** symbol = static_cast<const char**>(data);
+    *symbol = symname;
+}
+
+static int backtraceFullCallback(void* data, uintptr_t, const char*, int, const char* function)
+{
+    const char** symbol = static_cast<const char**>(data);
+    *symbol = function;
+    return 0;
+}
+
+char** symbolize(void* const* addresses, int size)
+{
+    struct backtrace_state* state = backtraceState();
+    if (!state)
+        return nullptr;
+
+    char** symbols = static_cast<char**>(malloc(sizeof(char*) * size));
+
+    for (int i = 0; i < size; ++i) {
+        uintptr_t pc = reinterpret_cast<uintptr_t>(addresses[i]);
+        char* symbol;
+
+        backtrace_pcinfo(state, pc, backtraceFullCallback, nullptr, &symbol);
+        if (!symbol)
+            backtrace_syminfo(backtraceState(), pc, backtraceSyminfoCallback, nullptr, &symbol);
+
+        if (symbol) {
+            char* demangled = abi::__cxa_demangle(symbol, nullptr, nullptr, nullptr);
+            if (demangled)
+                symbols[i] = demangled;
+            else
+                symbols[i] = strdup(symbol);
+        } else
+            symbols[i] = strdup("???");
+    }
+    return symbols;
+}
+#endif
 
 ALWAYS_INLINE size_t StackTrace::instanceSize(int capacity)
 {
@@ -110,7 +164,11 @@ auto StackTrace::demangle(void* pc) -> std::optional<DemangleEntry>
 void StackTrace::dump(PrintStream& out, const char* indentString) const
 {
     const auto* stack = this->stack();
-#if HAVE(BACKTRACE_SYMBOLS)
+#if USE(LIBBACKTRACE)
+    char** symbols = symbolize(stack, m_size);
+    if (!symbols)
+        return;
+#elif HAVE(BACKTRACE_SYMBOLS)
     char** symbols = backtrace_symbols(stack, m_size);
     if (!symbols)
         return;
@@ -146,7 +204,11 @@ void StackTrace::dump(PrintStream& out, const char* indentString) const
             out.printf("%s%s%-3d %p\n", m_prefix ? m_prefix : "", indentString, frameNumber, stack[i]);
     }
 
-#if HAVE(BACKTRACE_SYMBOLS)
+#if USE(LIBBACKTRACE)
+    for (int i = 0; i < m_size; ++i)
+        free(symbols[i]);
+    free(symbols);
+#elif HAVE(BACKTRACE_SYMBOLS)
     free(symbols);
 #endif
 }
