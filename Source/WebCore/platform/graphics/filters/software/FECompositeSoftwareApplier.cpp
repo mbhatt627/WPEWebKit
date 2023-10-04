@@ -25,6 +25,7 @@
 #include "config.h"
 #include "FECompositeSoftwareApplier.h"
 
+#include "FECompositeArithmeticNEON.h"
 #include "FEComposite.h"
 #include "GraphicsContext.h"
 #include "ImageBuffer.h"
@@ -147,6 +148,8 @@ bool FECompositeSoftwareApplier::applyArithmetic(FilterImage& input, FilterImage
     ASSERT(length == destinationPixelBuffer->sizeInBytes());
 #if !HAVE(ARM_NEON_INTRINSICS)
     applyPlatformArithmetic(sourcePixelBytes, destinationPixelBytes, length, m_effect.k1(), m_effect.k2(), m_effect.k3(), m_effect.k4());
+#else
+    platformArithmeticNeon(sourcePixelBytes, destinationPixelBytes, length, m_effect.k1(), m_effect.k2(), m_effect.k3(), m_effect.k4());
 #endif
     return true;
 }

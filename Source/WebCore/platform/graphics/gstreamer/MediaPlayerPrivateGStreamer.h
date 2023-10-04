@@ -290,6 +290,16 @@ protected:
         StreamCollectionChanged = 1 << 7
     };
 
+    enum class PlaybackRatePausedState {
+        ManuallyPaused, // Initialization or user explicitly paused. This takes preference over RatePaused. You don't
+                        // transition from Manually to Rate Paused unless there is a play while rate == 0.
+        RatePaused, // Pipeline was playing and rate was set to zero.
+        ShouldMoveToPlaying, // Pipeline was paused because of zero rate and it should be playing. This is not a
+                             // definitive state, just an operational transition from RatePaused to Playing to keep the
+                             // pipeline state changes contained in updateStates.
+        Playing, // Pipeline is playing and it should be.
+    };
+
     static bool isAvailable();
 
     virtual void durationChanged();
@@ -374,6 +384,7 @@ protected:
     mutable std::optional<bool> m_isLiveStream;
     bool m_isPaused { true };
     float m_playbackRate { 1 };
+    PlaybackRatePausedState m_playbackRatePausedState { PlaybackRatePausedState::ManuallyPaused };
     GstState m_currentState { GST_STATE_NULL };
     GstState m_oldState { GST_STATE_NULL };
     GstState m_requestedState { GST_STATE_VOID_PENDING };
@@ -545,7 +556,6 @@ private:
     GRefPtr<GstElement> m_textSink;
     GUniquePtr<GstStructure> m_mediaLocations;
     int m_mediaLocationCurrentIndex { 0 };
-    bool m_isPlaybackRatePaused { false };
     MediaTime m_timeOfOverlappingSeek;
     // Last playback rate sent through a GStreamer seek.
     float m_lastPlaybackRate { 1 };
