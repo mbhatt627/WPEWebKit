@@ -155,6 +155,7 @@ Blob::Blob(ScriptExecutionContext* context, Vector<uint8_t>&& data, const String
     , m_type(contentType)
     , m_size(data.size())
     , m_internalURL(BlobURL::createInternalURL())
+    , m_memoryCost(data.size())
 {
     ThreadableBlobRegistry::registerBlobURL(m_internalURL, { BlobPart(WTFMove(data)) }, contentType);
 }
@@ -381,6 +382,11 @@ BlobURLHandle Blob::handle() const
 WebCoreOpaqueRoot root(Blob* blob)
 {
     return WebCoreOpaqueRoot { blob };
+}
+
+size_t Blob::memoryCost() const
+{
+    return m_memoryCost;
 }
 
 } // namespace WebCore

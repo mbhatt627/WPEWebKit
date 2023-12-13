@@ -43,6 +43,7 @@
 #include "FrameLoaderClient.h"
 #include "GPUBasedCanvasRenderingContext.h"
 #include "GeometryUtilities.h"
+#include "GLContext.h"
 #include "GraphicsContext.h"
 #include "HostWindow.h"
 #include "HTMLNames.h"
@@ -69,6 +70,7 @@
 #include <JavaScriptCore/JSCInlines.h>
 #include <math.h>
 #include <wtf/IsoMallocInlines.h>
+#include <wtf/MainThread.h>
 #include <wtf/RAMSize.h>
 #include <wtf/text/StringBuilder.h>
 
@@ -896,6 +898,21 @@ bool HTMLCanvasElement::shouldAccelerate(unsigned area) const
         return false;
 
     if (!settings.canvasUsesAcceleratedDrawing())
+        return false;
+
+    // Don't accelerate canvases created on worker threads.
+    if (!isMainThread())
+        return false;
+
+    // Don't accelerate canvases when nonCompositedWebGL is enabled.
+    if (settings.nonCompositedWebGLEnabled())
+        return false;
+
+    // Don't accelerate canvases if there's an existent glContext that's not the sharing one, as
+    // it means that there's WebGL content being rendered.
+    GLContext* activeContext = GLContext::current();
+    GLContext* sharingContext = PlatformDisplay::sharedDisplayForCompositing().sharingGLContext();
+    if (activeContext && activeContext != sharingContext)
         return false;
 
     if (area < settings.minimumAccelerated2dCanvasSize())

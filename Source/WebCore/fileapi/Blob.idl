@@ -36,6 +36,7 @@ typedef (BufferSource or Blob or USVString) BlobPart;
     Exposed=(Window,Worker),
     GenerateIsReachable=Impl,
     CustomToJSObject,
+    ReportExtraMemoryCost,
 ] interface Blob {
     [CallWith=CurrentScriptExecutionContext] constructor(optional sequence<BlobPart> blobParts, optional BlobPropertyBag options);
 

@@ -58,6 +58,8 @@ TextureMapperPlatformLayerBuffer::TextureMapperPlatformLayerBuffer(TextureVarian
 
 TextureMapperPlatformLayerBuffer::~TextureMapperPlatformLayerBuffer()
 {
+    if (m_sync)
+        glDeleteSync(static_cast<GLsync>(m_sync));
 }
 
 bool TextureMapperPlatformLayerBuffer::canReuseWithoutReset(const IntSize& size, GLint internalFormat)
@@ -129,6 +131,13 @@ void TextureMapperPlatformLayerBuffer::paintToTextureMapper(TextureMapper& textu
         m_unmanagedBufferDataHolder->waitForCPUSync();
 #endif // USE(GSTREAMER_GL)
 
+    if (m_sync) {
+        glWaitSync(static_cast<GLsync>(m_sync), 0, GL_TIMEOUT_IGNORED);
+        glDeleteSync(static_cast<GLsync>(m_sync));
+        glFlush();
+        m_sync = nullptr;
+    }
+
     WTF::switchOn(m_variant,
         [&](const RGBTexture& texture) {
             ASSERT(texture.id);
@@ -174,6 +183,27 @@ void TextureMapperPlatformLayerBuffer::notifyPositionToHolePunchClient(const Flo
 bool TextureMapperPlatformLayerBuffer::isHolePunchBuffer()
 {
     return (m_extraFlags & TextureMapperGL::ShouldNotBlend) && !m_texture;
+}
+
+void TextureMapperPlatformLayerBuffer::addFenceSyncIfAvailable()
+{
+    static unsigned version = 0;
+    static std::once_flag onceFlag;
+
+    std::call_once(onceFlag, []() {
+        GLContext* context = GLContext::current();
+        if (!context) {
+            context = PlatformDisplay::sharedDisplayForCompositing().sharingGLContext();
+            context->makeContextCurrent();
+        }
+        version = context->version();
+    });
+
+    if (version >= 300 && glFenceSync) {
+        // GLES 3, so fences are available and we can use them.
+        m_sync = static_cast<void*>(glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0));
+        glFlush();
+    }
 }
 
 } // namespace WebCore

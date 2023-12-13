@@ -121,6 +121,8 @@ public:
     // Keeping the handle alive will keep the Blob data alive (but not the Blob object).
     BlobURLHandle handle() const;
 
+    size_t memoryCost() const;
+
 protected:
     WEBCORE_EXPORT explicit Blob(ScriptExecutionContext*);
     Blob(ScriptExecutionContext&, Vector<BlobPartVariant>&&, const BlobPropertyBag&);
@@ -153,6 +155,8 @@ private:
     URL m_internalURL;
 
     HashSet<std::unique_ptr<BlobLoader>> m_blobLoaders;
+
+    std::atomic<size_t> m_memoryCost { 0 };
 };
 
 WebCoreOpaqueRoot root(Blob*);

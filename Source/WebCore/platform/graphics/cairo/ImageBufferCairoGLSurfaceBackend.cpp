@@ -145,59 +145,15 @@ RefPtr<GraphicsLayerContentsDisplayDelegate> ImageBufferCairoGLSurfaceBackend::l
     return m_layerContentsDisplayDelegate;
 }
 
-bool ImageBufferCairoGLSurfaceBackend::copyToPlatformTexture(GraphicsContextGL&, GCGLenum target, PlatformGLObject destinationTexture, GCGLenum internalFormat, bool premultiplyAlpha, bool flipY) const
-{
-    if (!premultiplyAlpha || flipY)
-        return false;
-
-    if (!m_textures[0])
-        return false;
-
-    GCGLenum bindTextureTarget;
-    switch (target) {
-    case GL_TEXTURE_2D:
-        bindTextureTarget = GL_TEXTURE_2D;
-        break;
-    case GL_TEXTURE_CUBE_MAP_POSITIVE_X:
-    case GL_TEXTURE_CUBE_MAP_NEGATIVE_X:
-    case GL_TEXTURE_CUBE_MAP_POSITIVE_Y:
-    case GL_TEXTURE_CUBE_MAP_NEGATIVE_Y:
-    case GL_TEXTURE_CUBE_MAP_POSITIVE_Z:
-    case GL_TEXTURE_CUBE_MAP_NEGATIVE_Z:
-        bindTextureTarget = GL_TEXTURE_CUBE_MAP;
-        break;
-    default:
-        return false;
-    }
-
-    auto backendSize = this->backendSize();
-    cairo_surface_flush(m_surfaces[0].get());
-
-    std::unique_ptr<GLContext> context = GLContext::createOffscreenContext(&PlatformDisplay::sharedDisplayForCompositing());
-    context->makeContextCurrent();
-    uint32_t fbo;
-    glGenFramebuffers(1, &fbo);
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_textures[0], 0);
-    glBindTexture(bindTextureTarget, destinationTexture);
-    glCopyTexImage2D(target, 0, internalFormat, 0, 0, backendSize.width(), backendSize.height(), 0);
-    glBindTexture(bindTextureTarget, 0);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glFlush();
-    glDeleteFramebuffers(1, &fbo);
-    return true;
-}
-
 void ImageBufferCairoGLSurfaceBackend::swapBuffersIfNeeded()
 {
     auto backendSize = this->backendSize();
 
     GLContext* previousActiveContext = GLContext::current();
+    auto* context = PlatformDisplay::sharedDisplayForCompositing().sharingGLContext();
+    context->makeContextCurrent();
 
     if (!m_textures[1]) {
-        auto* context = PlatformDisplay::sharedDisplayForCompositing().sharingGLContext();
-        context->makeContextCurrent();
-
         glGenTextures(1, &m_textures[1]);
         glBindTexture(GL_TEXTURE_2D, m_textures[1]);
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -223,10 +179,10 @@ void ImageBufferCairoGLSurfaceBackend::swapBuffersIfNeeded()
         auto& proxy = downcast<Nicosia::ContentLayerTextureMapperImpl>(m_nicosiaLayer->impl()).proxy();
         ASSERT(is<TextureMapperPlatformLayerProxyGL>(proxy));
 
-        if (proxy.isEmpty()) {
-            Locker locker { proxy.lock() };
-            downcast<TextureMapperPlatformLayerProxyGL>(proxy).pushNextBuffer(makeUnique<TextureMapperPlatformLayerBuffer>(m_textures[1], backendSize, TextureMapperGL::ShouldBlend, GL_RGBA));
-        }
+        Locker locker { proxy.lock() };
+        auto layerBuffer = makeUnique<TextureMapperPlatformLayerBuffer>(m_textures[1], backendSize, TextureMapperGL::ShouldBlend, GL_RGBA);
+        layerBuffer->addFenceSyncIfAvailable();
+        downcast<TextureMapperPlatformLayerProxyGL>(proxy).pushNextBuffer(WTFMove(layerBuffer), false);
     }
 
     if (previousActiveContext)
