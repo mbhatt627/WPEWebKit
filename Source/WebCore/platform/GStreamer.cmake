@@ -73,6 +73,7 @@ if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
         platform/gstreamer/GStreamerQuirkAmLogic.cpp
         platform/gstreamer/GStreamerQuirkBcmNexus.cpp
         platform/gstreamer/GStreamerQuirkBroadcom.cpp
+        platform/gstreamer/GStreamerQuirkBroadcomBase.cpp
         platform/gstreamer/GStreamerQuirkRealtek.cpp
         platform/gstreamer/GStreamerQuirkRialto.cpp
         platform/gstreamer/GStreamerQuirkWesteros.cpp

@@ -279,6 +279,19 @@ public:
         MediaPlayerPrivateGStreamer* m_playerPrivate;
     };
     void setVideoRectangle(const IntRect& rect);
+    bool shouldDownload() { return m_fillTimer.isActive(); }
+
+    void setQuirkState(const GStreamerQuirk* owner, std::unique_ptr<GStreamerQuirkBase::GStreamerQuirkState>&& state)
+    {
+        m_quirkStates.set(owner, WTFMove(state));
+    }
+
+    GStreamerQuirkBase::GStreamerQuirkState* quirkState(const GStreamerQuirk* owner)
+    {
+        if (!m_quirkStates.contains(owner))
+            return nullptr;
+        return m_quirkStates.get(owner);
+    }
 
 protected:
     enum MainThreadNotification {
@@ -292,13 +305,20 @@ protected:
     };
 
     enum class PlaybackRatePausedState {
-        ManuallyPaused, // Initialization or user explicitly paused. This takes preference over RatePaused. You don't
-                        // transition from Manually to Rate Paused unless there is a play while rate == 0.
-        RatePaused, // Pipeline was playing and rate was set to zero.
-        ShouldMoveToPlaying, // Pipeline was paused because of zero rate and it should be playing. This is not a
-                             // definitive state, just an operational transition from RatePaused to Playing to keep the
-                             // pipeline state changes contained in updateStates.
-        Playing, // Pipeline is playing and it should be.
+        // Initialization. This takes preference over RatePaused. You don't
+        // transition from Initially to Rate Paused unless there is a play while rate == 0.
+        InitiallyPaused,
+        // User explicitly paused. This takes preference over RatePaused. You don't
+        // transition from Manually to Rate Paused unless there is a play while rate == 0.
+        ManuallyPaused,
+        // Pipeline was playing and rate was set to zero.
+        RatePaused,
+        // Pipeline was paused because of zero rate and it should be playing. This is not a
+        // definitive state, just an operational transition from RatePaused to Playing to keep the
+        // pipeline state changes contained in updateStates.
+        ShouldMoveToPlaying,
+        // Pipeline is playing and it should be.
+        Playing,
     };
 
     enum class ChangePipelineStateResult {
@@ -395,7 +415,7 @@ protected:
     bool m_isPipelinePlaying = false;
     bool m_isPaused { true };
     float m_playbackRate { 1 };
-    PlaybackRatePausedState m_playbackRatePausedState { PlaybackRatePausedState::ManuallyPaused };
+    PlaybackRatePausedState m_playbackRatePausedState { PlaybackRatePausedState::InitiallyPaused };
     GstState m_currentState { GST_STATE_NULL };
     GstState m_oldState { GST_STATE_NULL };
     GstState m_requestedState { GST_STATE_VOID_PENDING };
@@ -522,7 +542,7 @@ private:
 
     virtual void updateDownloadBufferingFlag();
     void processBufferingStats(GstMessage*);
-    void updateBufferingStatus(GstBufferingMode, double percentage);
+    void updateBufferingStatus(GstBufferingMode, double percentage, bool resetHistory = false);
     void updateMaxTimeLoaded(double percentage);
 
 #if USE(GSTREAMER_MPEGTS)
@@ -544,6 +564,8 @@ private:
     void configureElement(GstElement*);
 
     void configureElementPlatformQuirks(GstElement*);
+
+    std::optional<int> queryBufferingPercentage();
 
     void setPlaybinURL(const URL& urlString);
 
@@ -589,8 +611,14 @@ private:
     RefPtr<TextureMapperPlatformLayerProxy> m_platformLayerProxy;
 #endif
 #endif
+
+    // These attributes can ONLY be changed from updateBufferingStatus() in order to keep the
+    // hysteresis level detection consistent between buffer percentage update cycles.
+    bool m_wasBuffering { false };
     bool m_isBuffering { false };
+    int m_previousBufferingPercentage { 0 };
     int m_bufferingPercentage { 0 };
+
     bool m_hasWebKitWebSrcSentEOS { false };
     mutable unsigned long long m_totalBytes { 0 };
     URL m_url;
@@ -677,6 +705,7 @@ private:
     MediaTime m_pausedTime;
 
     RefPtr<GStreamerQuirksManager> m_quirksManagerForTesting;
+    HashMap<const GStreamerQuirk*, std::unique_ptr<GStreamerQuirkBase::GStreamerQuirkState>> m_quirkStates;
 };
 
 }
