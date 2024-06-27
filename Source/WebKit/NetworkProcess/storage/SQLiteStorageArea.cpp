@@ -356,9 +356,10 @@ Expected<void, StorageError> SQLiteStorageArea::setItem(const String& key, const
     if (result != SQLITE_DONE) {
         if (!handleDatabaseCorruption || !handleDatabaseCorruptionIfNeeded(result))
             return makeUnexpected(StorageError::Database);
-        statement = cachedStatement(StatementType::SetItem);
-        if (!statement || statement->bindText(1, key) || statement->bindBlob(2, value) || statement->step() != SQLITE_DONE)
-            return makeUnexpected(StorageError::Database);
+
+        // The database was recovered from corruption.
+        // Try again but without handling database corruption this time to avoid infinite loop.
+        return setItem(key, value, false);
     }
 
     updateCacheIfNeeded(key, value);
