@@ -54,4 +54,7 @@ SQLiteStatementAutoResetScope::~SQLiteStatementAutoResetScope()
         m_statement->reset();
 }
 
+SQLiteStatement* SQLiteStatementAutoResetScope::get() { return m_statement.get(); }
+SQLiteStatement* SQLiteStatementAutoResetScope::operator->() { return m_statement.get(); }
+
 }

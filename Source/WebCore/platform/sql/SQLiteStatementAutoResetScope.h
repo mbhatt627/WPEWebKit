@@ -27,6 +27,7 @@
 
 #include <wtf/FastMalloc.h>
 #include <wtf/Noncopyable.h>
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 class SQLiteStatement;
@@ -39,14 +40,14 @@ public:
     WEBCORE_EXPORT SQLiteStatementAutoResetScope& operator=(SQLiteStatementAutoResetScope&& other);
     WEBCORE_EXPORT ~SQLiteStatementAutoResetScope();
 
-    explicit operator bool() const { return m_statement; }
+    explicit operator bool() const { return !!m_statement; }
     bool operator!() const { return !m_statement; }
 
-    SQLiteStatement* get() { return m_statement; }
-    SQLiteStatement* operator->() { return m_statement; }
+    SQLiteStatement* get();
+    SQLiteStatement* operator->();
 
 private:
-    SQLiteStatement* m_statement;
+    WeakPtr<SQLiteStatement> m_statement;
 };
 
 } // namespace WebCore

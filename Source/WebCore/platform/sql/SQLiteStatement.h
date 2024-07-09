@@ -28,12 +28,13 @@
 #include "SQLValue.h"
 #include "SQLiteDatabase.h"
 #include <wtf/Span.h>
+#include <wtf/WeakPtr.h>
 
 struct sqlite3_stmt;
 
 namespace WebCore {
 
-class SQLiteStatement {
+class SQLiteStatement : public CanMakeWeakPtr<SQLiteStatement> {
     WTF_MAKE_NONCOPYABLE(SQLiteStatement); WTF_MAKE_FAST_ALLOCATED;
 public:
     WEBCORE_EXPORT ~SQLiteStatement();
