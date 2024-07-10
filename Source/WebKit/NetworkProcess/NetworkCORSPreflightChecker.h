@@ -56,6 +56,7 @@ public:
         String userAgent;
         PAL::SessionID sessionID;
         WebPageProxyIdentifier webPageProxyID;
+        WebCore::FetchOptions::Credentials fetchOptionsCredentials;
         WebCore::StoredCredentialsPolicy storedCredentialsPolicy;
     };
     using CompletionCallback = CompletionHandler<void(WebCore::ResourceError&&)>;

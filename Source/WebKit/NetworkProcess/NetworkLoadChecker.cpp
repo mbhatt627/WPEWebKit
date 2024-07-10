@@ -208,7 +208,7 @@ ResourceError NetworkLoadChecker::validateResponse(const ResourceRequest& reques
     if (response.httpStatusCode() == 304)
         return { };
 
-    auto result = passesAccessControlCheck(response, m_storedCredentialsPolicy, *m_origin, m_networkResourceLoader.get());
+    auto result = passesAccessControlCheck(response, m_options.credentials, *m_origin, m_networkResourceLoader.get());
     if (!result)
         return ResourceError { String { }, 0, m_url, WTFMove(result.error()), ResourceError::Type::AccessControl };
 
@@ -408,6 +408,7 @@ void NetworkLoadChecker::checkCORSRequestWithPreflight(ResourceRequest&& request
         request.httpUserAgent(),
         m_sessionID,
         m_webPageProxyID,
+        m_options.credentials,
         m_storedCredentialsPolicy
     };
     m_corsPreflightChecker = makeUnique<NetworkCORSPreflightChecker>(m_networkProcess.get(), m_networkResourceLoader.get(), WTFMove(parameters), m_shouldCaptureExtraNetworkLoadMetrics, [this, request = WTFMove(request), handler = WTFMove(handler), isRedirected = isRedirected()](auto&& error) mutable {
