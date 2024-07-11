@@ -269,6 +269,9 @@ class MediaController
                 supportingObject.disable();
         }
 
+        if (previousControls)
+            previousControls.disable();
+
         this.controls = new ControlsClass;
         this.controls.delegate = this;
 
