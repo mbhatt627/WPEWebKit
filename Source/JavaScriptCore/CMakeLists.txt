@@ -1530,4 +1530,6 @@ if (USE_VERSION_STAMPER)
         VERBATIM)
 endif ()
 
-add_subdirectory(shell)
+if (ENABLE_JAVASCRIPT_SHELL)
+  add_subdirectory(shell)
+endif ()
