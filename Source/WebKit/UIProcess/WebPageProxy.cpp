@@ -3111,6 +3111,11 @@ bool WebPageProxy::handleKeyboardEvent(const NativeWebKeyboardEvent& event)
     
     LOG(KeyHandling, "WebPageProxy::handleKeyboardEvent: %s", webKeyboardEventTypeString(event.type()));
 
+    if (event.type() == WebEvent::KeyDown && !m_keyEventQueue.isEmpty() && m_keyEventQueue.last() == event) {
+        // Throtthe key repetition if we still have previous keypress pending
+        return true;
+    }
+
     m_keyEventQueue.append(event);
 
     m_process->startResponsivenessTimer(event.type() == WebEvent::KeyDown ? WebProcessProxy::UseLazyStop::Yes : WebProcessProxy::UseLazyStop::No);
