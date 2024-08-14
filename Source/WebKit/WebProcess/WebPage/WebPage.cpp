@@ -1619,9 +1619,10 @@ void WebPage::close()
 
     m_printContext = nullptr;
     m_mainFrame->coreFrame()->loader().detachFromParent();
-    m_drawingArea = nullptr;
 
     DeferredPageDestructor::createDeferredPageDestructor(WTFMove(m_page), this);
+
+    m_drawingArea = nullptr;
 
     bool isRunningModal = m_isRunningModal;
     m_isRunningModal = false;
