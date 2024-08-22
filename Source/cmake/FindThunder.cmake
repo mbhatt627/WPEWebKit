@@ -56,7 +56,7 @@ find_path(THUNDER_INCLUDE_DIR
 )
 
 find_library(THUNDER_LIBRARY
-    NAMES ocdm
+    NAMES ocdm ClientOCDM
     HINTS ${PC_THUNDER_LIBDIR}
           ${PC_THUNDER_LIBRARY_DIRS}
 )
