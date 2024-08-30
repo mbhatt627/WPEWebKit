@@ -429,6 +429,11 @@ void MediaPlayerPrivateGStreamerMSE::updateStates()
     } else if (!isSeeking && !shouldBePlaying && m_isPipelinePlaying) {
         if (changePipelineState(GST_STATE_PAUSED) == ChangePipelineStateResult::Failed)
             GST_ERROR_OBJECT(pipeline(), "Setting the pipeline to PAUSED failed");
+    } else if (m_isEosWithNoBuffers) {
+        if (m_player) {
+            // Trigger playback end detection in HTMLMediaElement.
+            m_player->timeChanged();
+        }
     }
 }
 
@@ -474,6 +479,23 @@ void MediaPlayerPrivateGStreamerMSE::startSource(const Vector<RefPtr<MediaSource
 {
     m_tracks = filterOutRepeatingTracks(tracks);
     webKitMediaSrcEmitStreams(WEBKIT_MEDIA_SRC(m_source.get()), m_tracks);
+}
+
+void MediaPlayerPrivateGStreamerMSE::setEosWithNoBuffers(bool eosWithNoBuffers)
+{
+    m_isEosWithNoBuffers = eosWithNoBuffers;
+    // Parsebin will trigger an error, instruct MediaPlayerPrivateGStreamer to ignore it.
+    if (eosWithNoBuffers) {
+        // On GStreamer 1.18.6, EOS with no buffers causes a parsebin error here:
+        // https://github.com/GStreamer/gst-plugins-base/blob/1.18.6/gst/playback/gstparsebin.c#L3495
+        // On GStreamer 1.24 (at least) that doesn't happen. Let's play safe and protect against the
+        // error in lower versions.
+        if (!webkitGstCheckVersion(1, 24, 0))
+            m_ignoreErrors = true;
+        changePipelineState(GST_STATE_READY);
+        if (!webkitGstCheckVersion(1, 24, 0))
+            m_ignoreErrors = false;
+    }
 }
 
 void MediaPlayerPrivateGStreamerMSE::getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>& types)
