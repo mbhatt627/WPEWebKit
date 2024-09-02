@@ -95,6 +95,7 @@ WEBKIT_OPTION_DEFINE(ENABLE_WPE_QT_API "Whether to enable support for the Qt5/QM
 WEBKIT_OPTION_DEFINE(USE_AVIF "Whether to enable support for AVIF images." PUBLIC ${ENABLE_EXPERIMENTAL_FEATURES})
 WEBKIT_OPTION_DEFINE(USE_JPEGXL "Whether to enable support for JPEG-XL images." PUBLIC ${ENABLE_EXPERIMENTAL_FEATURES})
 WEBKIT_OPTION_DEFINE(USE_LCMS "Whether to enable support for image color management using libcms2." PUBLIC ON)
+WEBKIT_OPTION_DEFINE(USE_LIBBACKTRACE "Whether to enable usage of libbacktrace." PUBLIC OFF)
 WEBKIT_OPTION_DEFINE(USE_OPENJPEG "Whether to enable support for JPEG2000 images." PUBLIC ON)
 WEBKIT_OPTION_DEFINE(USE_SOUP2 "Whether to enable usage of Soup 2 instead of Soup 3." PUBLIC OFF)
 WEBKIT_OPTION_DEFINE(USE_WOFF2 "Whether to enable support for WOFF2 Web Fonts." PUBLIC ON)
@@ -366,6 +367,13 @@ SET_AND_EXPOSE_TO_BUILD(USE_COORDINATED_GRAPHICS TRUE)
 SET_AND_EXPOSE_TO_BUILD(USE_NICOSIA TRUE)
 SET_AND_EXPOSE_TO_BUILD(HAVE_OS_DARK_MODE_SUPPORT 1)
 
+if (USE_LIBBACKTRACE)
+  find_package(LibBacktrace)
+  if (NOT LIBBACKTRACE_FOUND)
+        message(FATAL_ERROR "libbacktrace is required for USE_LIBBACKTRACE")
+    endif ()
+endif ()
+
 # GUri is available in GLib since version 2.66, but we only want to use it if version is >= 2.67.1.
 if (PC_GLIB_VERSION VERSION_GREATER "2.67.1" OR PC_GLIB_VERSION STREQUAL "2.67.1")
     SET_AND_EXPOSE_TO_BUILD(HAVE_GURI 1)
@@ -426,4 +434,10 @@ if (COMPILER_IS_GCC_OR_CLANG AND UNIX AND NOT APPLE)
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}${CMAKE_COMPILER_SIZE_OPT_FLAGS} -ffunction-sections -fdata-sections")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}${CMAKE_COMPILER_SIZE_OPT_FLAGS} -ffunction-sections -fdata-sections -fno-rtti")
     set(CMAKE_SHARED_LINKER_FLAGS_DEBUG "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} -Wl,--gc-sections")
+endif ()
+
+if (USE_LIBBACKTRACE)
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}${CMAKE_COMPILER_SIZE_OPT_FLAGS} -funwind-tables")
+
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}${CMAKE_COMPILER_SIZE_OPT_FLAGS} -funwind-tables")
 endif ()

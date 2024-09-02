@@ -29,9 +29,17 @@
 #include <optional>
 #include <wtf/SystemFree.h>
 
+#if USE(LIBBACKTRACE)
+#include <backtrace.h>
+#endif
+
 namespace WTF {
 
 class PrintStream;
+
+#if USE(LIBBACKTRACE)
+WTF_EXPORT_PRIVATE char** symbolize(void* const*, int);
+#endif
 
 class StackTrace {
     WTF_MAKE_FAST_ALLOCATED;
