@@ -466,7 +466,6 @@
     "web-platform-tests/webrtc": "import", 
     "web-platform-tests/webrtc-extensions": "import", 
     "web-platform-tests/webrtc-priority": "import", 
-    "web-platform-tests/webrtc/legacy": "skip", 
     "web-platform-tests/websockets": "import", 
     "web-platform-tests/webstorage": "import", 
     "web-platform-tests/webstorage/": "import", 

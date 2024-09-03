@@ -29,6 +29,6 @@
 ] dictionary RTCOfferOptions : RTCOfferAnswerOptions {
     boolean iceRestart = false;
 
-    boolean? offerToReceiveVideo;
-    boolean? offerToReceiveAudio;
+    [EnabledBySetting=LegacyWebRTCOfferOptionsEnabled] boolean? offerToReceiveVideo;
+    [EnabledBySetting=LegacyWebRTCOfferOptionsEnabled] boolean? offerToReceiveAudio;
 };

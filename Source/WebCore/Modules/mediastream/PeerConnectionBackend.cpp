@@ -450,7 +450,7 @@ ExceptionOr<Ref<RTCRtpSender>> PeerConnectionBackend::addTrack(MediaStreamTrack&
     return Exception { NotSupportedError, "Not implemented"_s };
 }
 
-ExceptionOr<Ref<RTCRtpTransceiver>> PeerConnectionBackend::addTransceiver(const String&, const RTCRtpTransceiverInit&)
+ExceptionOr<Ref<RTCRtpTransceiver>> PeerConnectionBackend::addTransceiver(const String&, const RTCRtpTransceiverInit&, IgnoreNegotiationNeededFlag)
 {
     return Exception { NotSupportedError, "Not implemented"_s };
 }

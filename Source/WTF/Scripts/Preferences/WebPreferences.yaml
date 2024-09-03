@@ -1183,6 +1183,18 @@ LegacyEncryptedMediaAPIEnabled:
     WebCore:
       default: true
 
+LegacyWebRTCOfferOptionsEnabled:
+  type: bool
+  condition: ENABLE(WEB_RTC)
+  defaultValue:
+    WebKitLegacy:
+      default: false
+    WebKit:
+      "PLATFORM(GTK) || PLATFORM(WPE)": true
+      default: false
+    WebCore:
+      default: false
+
 LinkPreconnect:
   type: bool
   webcoreName: linkPreconnectEnabled

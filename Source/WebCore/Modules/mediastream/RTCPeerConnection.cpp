@@ -193,7 +193,7 @@ ExceptionOr<Ref<RTCRtpTransceiver>> RTCPeerConnection::addTransceiver(AddTransce
         if (isClosed())
             return Exception { InvalidStateError };
 
-        return m_backend->addTransceiver(kind, init);
+        return m_backend->addTransceiver(kind, init, PeerConnectionBackend::IgnoreNegotiationNeededFlag::No);
     }
 
     if (isClosed())
@@ -201,6 +201,23 @@ ExceptionOr<Ref<RTCRtpTransceiver>> RTCPeerConnection::addTransceiver(AddTransce
 
     auto track = std::get<RefPtr<MediaStreamTrack>>(withTrack).releaseNonNull();
     return m_backend->addTransceiver(WTFMove(track), init);
+}
+
+ExceptionOr<Ref<RTCRtpTransceiver>> RTCPeerConnection::addReceiveOnlyTransceiver(String&& kind)
+{
+    ALWAYS_LOG(LOGIDENTIFIER);
+    // https://www.w3.org/TR/webrtc/#legacy-configuration-extensions Step 3.3: Let transceiver be
+    // the result of invoking the equivalent of connection.addTransceiver(kind), except that this
+    // operation MUST NOT update the negotiation-needed flag.
+    RTCRtpTransceiverInit init { .direction = RTCRtpTransceiverDirection::Recvonly, .streams = { }, .sendEncodings = { } };
+    if (kind != "audio"_s && kind != "video"_s)
+        return Exception { ExceptionCode::TypeError };
+
+    ASSERT(!isClosed());
+    if (isClosed())
+        return Exception { ExceptionCode::InvalidStateError };
+
+    return m_backend->addTransceiver(kind, init, PeerConnectionBackend::IgnoreNegotiationNeededFlag::Yes);
 }
 
 void RTCPeerConnection::createOffer(RTCOfferOptions&& options, Ref<DeferredPromise>&& promise)
@@ -212,7 +229,7 @@ void RTCPeerConnection::createOffer(RTCOfferOptions&& options, Ref<DeferredPromi
     }
 
     // https://www.w3.org/TR/webrtc/#legacy-configuration-extensions
-    auto processLegacyOption = [&](auto option, auto trackKind) {
+    auto needsReceiveOnlyTransceiver = [&](auto option, auto&& trackKind) -> bool {
         if (!option) {
             for (auto& transceiver : currentTransceivers()) {
                 if (transceiver->stopped())
@@ -224,7 +241,7 @@ void RTCPeerConnection::createOffer(RTCOfferOptions&& options, Ref<DeferredPromi
                 else if (transceiver->direction() == RTCRtpTransceiverDirection::Recvonly)
                     transceiver->setDirection(RTCRtpTransceiverDirection::Inactive);
             }
-            return;
+            return false;
         }
 
         for (auto& transceiver : currentTransceivers()) {
@@ -234,18 +251,31 @@ void RTCPeerConnection::createOffer(RTCOfferOptions&& options, Ref<DeferredPromi
                 continue;
             auto direction = transceiver->direction();
             if (direction == RTCRtpTransceiverDirection::Sendrecv || direction == RTCRtpTransceiverDirection::Recvonly)
-                return;
+                return false;
         }
 
-        RTCRtpTransceiverInit init { .direction = RTCRtpTransceiverDirection::Recvonly };
-        addTransceiver(trackKind, init);
+        return true;
     };
 
-    if (options.offerToReceiveVideo)
-        processLegacyOption(options.offerToReceiveVideo.value(), "video"_s);
+    if (options.offerToReceiveAudio) {
+        if (needsReceiveOnlyTransceiver(*options.offerToReceiveAudio, "audio"_s)) {
+            auto result = addReceiveOnlyTransceiver("audio"_s);
+            if (result.hasException()) {
+                promise->reject(result.releaseException());
+                return;
+            }
+        }
+    }
 
-    if (options.offerToReceiveAudio)
-        processLegacyOption(options.offerToReceiveAudio.value(), "audio"_s);
+    if (options.offerToReceiveVideo) {
+        if (needsReceiveOnlyTransceiver(*options.offerToReceiveVideo, "video"_s)) {
+            auto result = addReceiveOnlyTransceiver("video"_s);
+            if (result.hasException()) {
+                promise->reject(result.releaseException());
+                return;
+            }
+        }
+    }
 
     chainOperation(WTFMove(promise), [this, options = WTFMove(options)](auto&& promise) mutable {
         if (m_signalingState != RTCSignalingState::Stable && m_signalingState != RTCSignalingState::HaveLocalOffer) {
