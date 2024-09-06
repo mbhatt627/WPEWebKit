@@ -919,7 +919,7 @@ bool HTMLCanvasElement::shouldAccelerate(unsigned area) const
         return false;
 
     // Do not accelerate canvases that are smaller than 1/4 of the display size
-    if (area < document().view()->root()->hostWindow()->screenSize().area() / 4)
+    if (area < document().view()->root()->hostWindow()->screenSize().area() / 2)
         return false;
 
     return true;
