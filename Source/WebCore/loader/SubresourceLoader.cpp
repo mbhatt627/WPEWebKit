@@ -639,7 +639,7 @@ Expected<void, String> SubresourceLoader::checkResponseCrossOriginAccessControl(
 
     ASSERT(m_origin);
 
-    return passesAccessControlCheck(response, options().credentials == FetchOptions::Credentials::Include ? StoredCredentialsPolicy::Use : StoredCredentialsPolicy::DoNotUse, *m_origin, &CrossOriginAccessControlCheckDisabler::singleton());
+    return passesAccessControlCheck(response, options().credentials, *m_origin, &CrossOriginAccessControlCheckDisabler::singleton());
 }
 
 Expected<void, String> SubresourceLoader::checkRedirectionCrossOriginAccessControl(const ResourceRequest& previousRequest, const ResourceResponse& redirectResponse, ResourceRequest& newRequest)
@@ -663,7 +663,7 @@ Expected<void, String> SubresourceLoader::checkRedirectionCrossOriginAccessContr
 
         ASSERT(m_origin);
         if (crossOriginFlag) {
-            auto accessControlCheckResult = passesAccessControlCheck(redirectResponse, options().storedCredentialsPolicy, *m_origin, &CrossOriginAccessControlCheckDisabler::singleton());
+            auto accessControlCheckResult = passesAccessControlCheck(redirectResponse, options().credentials, *m_origin, &CrossOriginAccessControlCheckDisabler::singleton());
             if (!accessControlCheckResult)
                 return accessControlCheckResult;
         }

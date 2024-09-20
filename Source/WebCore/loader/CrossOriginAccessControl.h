@@ -26,6 +26,7 @@
 
 #pragma once
 
+#include "FetchOptions.h"
 #include "HTTPHeaderNames.h"
 #include "ReferrerPolicy.h"
 #include "StoredCredentialsPolicy.h"
@@ -84,8 +85,8 @@ private:
     bool m_accessControlCheckEnabled { true };
 };
 
-WEBCORE_EXPORT Expected<void, String> passesAccessControlCheck(const ResourceResponse&, StoredCredentialsPolicy, const SecurityOrigin&, const CrossOriginAccessControlCheckDisabler*);
-WEBCORE_EXPORT Expected<void, String> validatePreflightResponse(PAL::SessionID, const ResourceRequest&, const ResourceResponse&, StoredCredentialsPolicy, const SecurityOrigin&, const CrossOriginAccessControlCheckDisabler*);
+WEBCORE_EXPORT Expected<void, String> passesAccessControlCheck(const ResourceResponse&, FetchOptions::Credentials, const SecurityOrigin&, const CrossOriginAccessControlCheckDisabler*);
+WEBCORE_EXPORT Expected<void, String> validatePreflightResponse(PAL::SessionID, const ResourceRequest&, const ResourceResponse&, FetchOptions::Credentials, StoredCredentialsPolicy, const SecurityOrigin&, const CrossOriginAccessControlCheckDisabler*);
 
 enum class ForNavigation : bool { No, Yes };
 WEBCORE_EXPORT std::optional<ResourceError> validateCrossOriginResourcePolicy(CrossOriginEmbedderPolicyValue, const SecurityOrigin&, const URL&, const ResourceResponse&, ForNavigation);
